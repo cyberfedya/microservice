@@ -1,0 +1,32 @@
+{
+  "name": "docmanageapp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "cd server && npx ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "concurrently \"npm:dev\" \"npm:server\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ant-design/icons": "6.1.0",
+    "antd": "5.27.4",
+    "autoprefixer": "10.4.21",
+    "postcss": "8.5.6",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-router-dom": "7.9.3",
+    "recharts": "3.2.1",
+    "swagger-ui-react": "5.29.4",
+    "tailwindcss": "4.1.14"
+  },
+  "devDependencies": {
+    "concurrently": "8.2.2",
+    "@types/node": "22.14.0",
+    "@vitejs/plugin-react": "5.0.0",
+    "typescript": "5.8.2",
+    "vite": "6.2.0"
+  }
+}

@@ -1,0 +1,192 @@
+// docmanageapp/server/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DocumentType {
+  Kiruvchi
+  Chiquvchi
+}
+
+enum DocumentStage {
+  PENDING_REGISTRATION
+  REGISTRATION
+  RESOLUTION
+  ASSIGNMENT
+  EXECUTION
+  DRAFTING
+  REVISION_REQUESTED
+  SIGNATURE
+  DISPATCH
+  FINAL_REVIEW
+  COMPLETED
+  REJECTED
+  ON_HOLD
+  CANCELLED
+  ARCHIVED
+}
+
+enum DocumentStatus {
+  YANGI
+  IJROGA_YUBORILDI
+  KORIB_CHIQILMOQDA
+  BAJARILGAN
+}
+
+// --- НОВЫЙ ENUM ДЛЯ СТАТУСА СОГЛАСОВАНИЯ ---
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  users       User[]
+}
+
+model Department {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  name         String?
+  password     String
+  roleId       Int
+  role         Role     @relation(fields: [roleId], references: [id])
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  managerId    Int?
+  manager      User?    @relation("UserManagedBy", fields: [managerId], references: [id])
+  reports      User[]   @relation("UserManagedBy")
+
+  documents           Document[] @relation("DocumentAuthor")
+  tasks               Document[] @relation("DocumentExecutor")
+  internalTasks       Document[] @relation("InternalDocumentExecutor")
+  violations          Violation[]
+  reviews             DocumentReviewer[]
+  coExecutedDocs      DocumentCoExecutor[]
+  contributedDocs     DocumentContributor[]
+  auditLogs           AuditLog[]
+}
+
+model Document {
+  id                 Int           @id @default(autoincrement())
+  title              String
+  content            String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  type               DocumentType  @default(Kiruvchi)
+  stage              DocumentStage @default(PENDING_REGISTRATION)
+  status             DocumentStatus @default(YANGI)
+  deadline           DateTime?
+  stageDeadline     DateTime?
+  source             String?
+  kartoteka          String?
+  metadata          Json?
+
+  authorId           Int
+  author             User          @relation("DocumentAuthor", fields: [authorId], references: [id])
+  mainExecutorId     Int?
+  mainExecutor       User?         @relation("DocumentExecutor", fields: [mainExecutorId], references: [id])
+  internalAssigneeId Int?
+  internalAssignee   User?         @relation("InternalDocumentExecutor", fields: [internalAssigneeId], references: [id])
+  violations         Violation[]
+
+  // Relations
+  reviewers          DocumentReviewer[]
+  coExecutors        DocumentCoExecutor[]
+  contributors       DocumentContributor[]
+  auditLogs          AuditLog[]
+  aiSuggestions      AISuggestion[]
+
+  // Indexes
+  @@index([status])
+  @@index([stage])
+  @@index([deadline])
+  @@index([stageDeadline])
+}
+
+model DocumentCoExecutor {
+  id          Int      @id @default(autoincrement())
+  documentId  Int
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt  DateTime @default(now())
+
+  @@unique([documentId, userId])
+}
+
+model DocumentContributor {
+  id          Int      @id @default(autoincrement())
+  documentId  Int
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt  DateTime @default(now())
+
+  @@unique([documentId, userId])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  documentId  Int
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp   DateTime @default(now())
+  action      String
+  details     String?
+}
+
+model AISuggestion {
+  id                      Int      @id @default(autoincrement())
+  documentId             Int
+  document               Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  suggestedMainExecutorId Int?
+  reason                 String?
+  sentiment              String?
+  riskFlag               String?
+  createdAt              DateTime @default(now())
+}
+
+model Violation {
+  id                Int       @id @default(autoincrement())
+  date              DateTime
+  reason            String
+  type              String
+  userId            Int
+  user              User      @relation(fields: [userId], references: [id])
+  correspondenceId  Int?
+  correspondence    Document? @relation(fields: [correspondenceId], references: [id])
+}
+
+// --- ДОБАВЛЕНА НОВАЯ МОДЕЛЬ (ПРОМЕЖУТОЧНАЯ ТАБЛИЦА) ---
+model DocumentReviewer {
+  id          Int          @id @default(autoincrement())
+  status      ReviewStatus @default(PENDING)
+  comment     String?
+  updatedAt   DateTime     @updatedAt
+
+  documentId  Int
+  document    Document     @relation(fields: [documentId], references: [id])
+
+  userId      Int
+  user        User         @relation(fields: [userId], references: [id])
+
+  @@unique([documentId, userId]) // Гарантирует, что один пользователь может быть в списке согласующих для документа только один раз
+}
