@@ -9,7 +9,7 @@ import RoleSpecificDashboard from './RoleSpecificDashboard';
 import DocumentCard from './DocumentCard';
 import StatusDistributionChart from './StatusDistributionChart';
 import DocsPerDeptChart from './charts/DocsPerDeptChart';
-import DashboardSkeleton from './skeletons/DashboardSkeleton';
+import DashboardSkeleton from './DashboardSkeleton';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import CreateCorrespondenceModal from './CreateCorrespondenceModal';
 import { PlusIcon, SearchIcon, ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon } from './icons/IconComponents';

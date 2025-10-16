@@ -3,7 +3,7 @@
 import React from 'react';
 import { Correspondence } from '../types';
 import { getStageDisplayName } from '../constants';
-import { ArrowDownTrayIcon, ArrowUpTrayIcon, UserIcon } from './icons/IconComponents';
+import { ArrowDownTrayIcon, ArrowUpTrayIcon, UserCircleIcon as UserIcon } from './icons/IconComponents';
 import Deadline from './Deadline';
 
 interface DocumentCardProps {
