@@ -1,3 +1,5 @@
+// C:\Users\aliak\Desktop\Док-оборот\docmanageapp_xs-main\server\src\documents.service.ts
+
 import { Prisma, User } from "@prisma/client";
 import { prisma } from "./prisma";
 
@@ -21,8 +23,9 @@ export const documentInclude = {
             user: { select: { id: true, name: true } }
         }
     },
-    auditLog: {
-        orderBy: { createdAt: 'desc' },
+    // <<< ИСПРАВЛЕНО ЗДЕСЬ: auditLog -> auditLogs >>>
+    auditLogs: {
+        orderBy: { timestamp: 'desc' },
         include: { user: { select: { name: true } } }
     },
 } satisfies Prisma.DocumentInclude;
@@ -81,8 +84,9 @@ export async function createIncoming(data: { title: string, content: string, sou
     return newDocument;
 }
 
-async function createAuditLog(documentId: number, action: string, userId?: number, details?: string) {
-    await prisma.documentAuditLog.create({
+// <<< ИСПРАВЛЕНО ЗДЕСЬ: documentAuditLog -> auditLog >>>
+async function createAuditLog(documentId: number, action: string, userId: number, details?: string) {
+    await prisma.auditLog.create({
         data: {
             documentId,
             userId,
@@ -93,7 +97,7 @@ async function createAuditLog(documentId: number, action: string, userId?: numbe
 }
 
 export async function createOutgoing(data: { title: string, content: string, kartoteka: string }, authorId: number) {
-    return prisma.document.create({
+    const newDoc = await prisma.document.create({
         data: {
             ...data,
             authorId,
@@ -102,9 +106,11 @@ export async function createOutgoing(data: { title: string, content: string, kar
             source: 'Bank ichki tizimi'
         }
     });
+    await createAuditLog(newDoc.id, 'Chiquvchi hujjat yaratildi', authorId);
+    return newDoc;
 }
 
-export async function submitForReview(documentId: number) {
+export async function submitForReview(documentId: number, userId: number) {
     const requiredReviewers = await prisma.user.findMany({
         where: {
             OR: [
@@ -133,7 +139,7 @@ export async function submitForReview(documentId: number) {
             data: { stage: 'FINAL_REVIEW' }
         })
     ]);
-    await createAuditLog(documentId, 'Kelishuvga yuborildi');
+    await createAuditLog(documentId, 'Kelishuvga yuborildi', userId);
 
     return findDocumentById(documentId);
 }
@@ -153,6 +159,7 @@ export async function approveReview(documentId: number, userId: number) {
         where: { documentId_userId: { documentId, userId } },
         data: { status: 'APPROVED' }
     });
+    await createAuditLog(documentId, 'Kelishuv tasdiqlandi', userId);
 
     const pendingReviews = await prisma.documentReviewer.count({
         where: { documentId, status: 'PENDING' }
@@ -163,8 +170,8 @@ export async function approveReview(documentId: number, userId: number) {
             where: { id: documentId },
             data: { stage: 'SIGNATURE' }
         });
+        await createAuditLog(documentId, 'Barcha kelishuvlar tasdiqlandi, imzolashga o\'tkazildi', userId);
     }
-    await createAuditLog(documentId, 'Kelishuv tasdiqlandi', userId);
 
     return findDocumentById(documentId);
 }
@@ -222,7 +229,6 @@ export async function updateExecutors(documentId: number, payload: { mainExecuto
                 documentId, 'Asosiy ijrochi tayinlandi',
                 doerId,
                 `Ijrochi: ${mainExecutor?.name}`);
-            // Create notification for the new main executor
             await createNotification(
                 Number(mainExecutorId),
                 `Sizga yangi hujjat tayinlandi: "${document.title}"`,
@@ -236,7 +242,6 @@ export async function updateExecutors(documentId: number, payload: { mainExecuto
                 await tx.documentCoExecutor.createMany({
                     data: coExecutorIds.map((userId: number) => ({ documentId, userId }))
                 });
-                // Create notifications for co-executors
                 for (const userId of coExecutorIds) {
                     await createNotification(
                         userId,
@@ -253,7 +258,6 @@ export async function updateExecutors(documentId: number, payload: { mainExecuto
                 await tx.documentContributor.createMany({
                     data: contributorIds.map((userId: number) => ({ documentId, userId }))
                 });
-                // Create notifications for contributors
                 for (const userId of contributorIds) {
                     await createNotification(
                         userId,
@@ -283,10 +287,12 @@ export async function updateDeadline(documentId: number, deadlines: { deadline?:
     });
 }
 
-export async function changeStage(documentId: number, stage: any) {
-    return prisma.document.update({
+export async function changeStage(documentId: number, stage: any, userId: number) {
+    const updatedDoc = await prisma.document.update({
         where: { id: documentId },
         data: { stage },
         include: documentInclude,
     });
+    await createAuditLog(documentId, `Status o'zgartirildi: ${stage}`, userId);
+    return updatedDoc;
 }
