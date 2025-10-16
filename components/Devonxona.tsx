@@ -53,9 +53,8 @@ const Devonxona: React.FC = () => {
     const [isCreateModalOpen, setCreateModalOpen] = useState(false);
     const [quickViewDoc, setQuickViewDoc] = useState<Correspondence | null>(null);
 
-    // --- Pagination State ---
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 9; // For a 3-column grid, 9 is a good number
+    const ITEMS_PER_PAGE = 9;
 
     const fetchData = () => {
         if (!user) return;
@@ -82,8 +81,6 @@ const Devonxona: React.FC = () => {
 
     const filteredCorrespondences = useFilteredDocuments(correspondences, user, filters);
 
-    // --- Pagination Logic ---
-    // Reset to page 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [filters]);
@@ -97,16 +94,9 @@ const Devonxona: React.FC = () => {
 
     const chartData = useMemo(() => {
         if (!Array.isArray(correspondences)) return [];
-
-        const stats = {
-            inProgress: 0,
-            completed: 0,
-            overdue: 0,
-        };
-
+        const stats = { inProgress: 0, completed: 0, overdue: 0 };
         const now = new Date();
         const finalStages = [CorrespondenceStage.COMPLETED, CorrespondenceStage.ARCHIVED, CorrespondenceStage.CANCELLED];
-
         correspondences.forEach(doc => {
             if (finalStages.includes(doc.stage as CorrespondenceStage)) {
                 stats.completed++;
@@ -120,10 +110,8 @@ const Devonxona: React.FC = () => {
     }, [correspondences]);
 
     const handleStatusFilterClick = (status: string) => {
-        // If the user clicks the same slice again, reset the filter.
         const newStatus = filters.activeStatus === status ? 'Barchasi' : status;
         dispatch({ type: 'SET_FILTER', payload: { name: 'activeStatus', value: newStatus } });
-        // Also reset the stage filter to avoid confusion
         dispatch({ type: 'SET_FILTER', payload: { name: 'activeStage', value: 'Barchasi' } });
     };
 
@@ -154,14 +142,6 @@ const Devonxona: React.FC = () => {
                         <h1 className="text-3xl font-bold tracking-wider">DEVONXONA</h1>
                         <p className="text-white/60">Sizda {filteredCorrespondences.length} ta mos keladigan hujjat mavjud</p>
                     </div>
-                    <div className="w-full md:w-72 h-40 bg-black/20 border border-white/10 rounded-xl p-2">
-                        <h3 className="text-sm font-semibold text-center text-white/70 mb-2">Hujjatlar holati</h3>
-                        <StatusDistributionChart 
-                            data={chartData} 
-                            onSliceClick={handleStatusFilterClick}
-                            activeFilter={filters.activeStatus}
-                        />
-                    </div> 
                     <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-3">
                         <div className="relative w-full sm:w-64">
                             <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -173,7 +153,7 @@ const Devonxona: React.FC = () => {
                                 className="w-full pl-11 pr-4 py-2.5 bg-black/20 border border-white/20 rounded-full focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             />
                         </div>
-                        <button 
+                        <button
                             onClick={() => setCreateModalOpen(true)}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 text-white bg-primary rounded-full shadow hover:bg-primary-dark transition-colors"
                         >
@@ -184,7 +164,6 @@ const Devonxona: React.FC = () => {
                 </header>
 
                 <div className="flex-shrink-0 flex items-center gap-2 border-b border-white/10 pb-4 mb-4 overflow-x-auto">
-                    {/* "My Tasks" Toggle */}
                     <div className="flex items-center pr-4 border-r border-white/20">
                         <label htmlFor="my-tasks-toggle" className="text-sm font-semibold text-white/70 mr-3 whitespace-nowrap">Mening vazifalarim</label>
                         <button
@@ -197,7 +176,6 @@ const Devonxona: React.FC = () => {
                             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${filters.showMyTasksOnly ? 'translate-x-6' : 'translate-x-1'}`} />
                         </button>
                     </div>
-
                     <div className="flex items-center gap-4">
                         <h3 className="text-sm font-semibold text-white/70 whitespace-nowrap">Filterlar:</h3>
                     </div>
@@ -205,9 +183,7 @@ const Devonxona: React.FC = () => {
                         <select value={filters.activeStage} onChange={e => dispatch({ type: 'SET_FILTER', payload: { name: 'activeStage', value: e.target.value } })} className="bg-black/20 border border-white/20 rounded-full px-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
                             <option value="Barchasi" className="text-black">Barcha Bosqichlar</option>
                             {Object.values(CorrespondenceStage).map(stage => (
-                                <option key={stage} value={stage} className="text-black">
-                                    {getStageDisplayName(stage)}
-                                </option>
+                                <option key={stage} value={stage} className="text-black">{getStageDisplayName(stage)}</option>
                             ))}
                         </select>
                         <div className="w-px h-5 bg-white/20"></div>
@@ -218,10 +194,7 @@ const Devonxona: React.FC = () => {
                             <option value="deadline_asc" className="text-black">Muddati yaqin</option>
                         </select>
                         <div className="w-px h-5 bg-white/20"></div>
-                        <button 
-                            onClick={handleResetFilters} 
-                            className="flex items-center gap-2 px-4 py-1.5 bg-black/20 border border-white/20 rounded-full text-sm text-white/70 hover:text-white hover:border-cyan-500 transition-colors"
-                        >
+                        <button onClick={handleResetFilters} className="flex items-center gap-2 px-4 py-1.5 bg-black/20 border border-white/20 rounded-full text-sm text-white/70 hover:text-white hover:border-cyan-500 transition-colors">
                             <ArrowPathIcon className="w-4 h-4" />
                             Tozalash
                         </button>
@@ -232,34 +205,13 @@ const Devonxona: React.FC = () => {
                     <aside className="w-60 flex-shrink-0 pr-4 border-r border-white/10 overflow-y-auto">
                         <h2 className="text-sm font-semibold uppercase text-white/50 mb-4">Hujjat turi</h2>
                         <ul className="space-y-2 mb-8">
-                            <li>
-                                <button
-                                    onClick={() => dispatch({ type: 'SET_FILTER', payload: { name: 'activeTab', value: 'Kiruvchi' } })}
-                                    className={`w-full text-left px-4 py-2.5 rounded-lg transition-colors text-base font-medium ${filters.activeTab === 'Kiruvchi' ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/10'}`}
-                                >
-                                    Kiruvchi
-                                </button>
-                            </li>
-                            <li>
-                                <button
-                                    onClick={() => dispatch({ type: 'SET_FILTER', payload: { name: 'activeTab', value: 'Chiquvchi' } })}
-                                    className={`w-full text-left px-4 py-2.5 rounded-lg transition-colors text-base font-medium ${filters.activeTab === 'Chiquvchi' ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/10'}`}
-                                >
-                                    Chiquvchi
-                                </button>
-                            </li>
+                            <li><button onClick={() => dispatch({ type: 'SET_FILTER', payload: { name: 'activeTab', value: 'Kiruvchi' } })} className={`w-full text-left px-4 py-2.5 rounded-lg transition-colors text-base font-medium ${filters.activeTab === 'Kiruvchi' ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/10'}`}>Kiruvchi</button></li>
+                            <li><button onClick={() => dispatch({ type: 'SET_FILTER', payload: { name: 'activeTab', value: 'Chiquvchi' } })} className={`w-full text-left px-4 py-2.5 rounded-lg transition-colors text-base font-medium ${filters.activeTab === 'Chiquvchi' ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/10'}`}>Chiquvchi</button></li>
                         </ul>
                         <h2 className="text-sm font-semibold uppercase text-white/50 mb-4">Kartoteka</h2>
                         <ul className="space-y-1">
                             {KARTOTEKA_ITEMS.map(item => (
-                                <li key={item}>
-                                    <button
-                                        onClick={() => dispatch({ type: 'SET_FILTER', payload: { name: 'activeKartoteka', value: item } })}
-                                        className={`w-full text-left px-4 py-2 rounded-lg transition-colors text-sm ${filters.activeKartoteka === item ? 'bg-white/5 text-cyan-300' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
-                                    >
-                                        {item}
-                                    </button>
-                                </li>
+                                <li key={item}><button onClick={() => dispatch({ type: 'SET_FILTER', payload: { name: 'activeKartoteka', value: item } })} className={`w-full text-left px-4 py-2 rounded-lg transition-colors text-sm ${filters.activeKartoteka === item ? 'bg-white/5 text-cyan-300' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}>{item}</button></li>
                             ))}
                         </ul>
                     </aside>
@@ -270,7 +222,7 @@ const Devonxona: React.FC = () => {
                         {!loading && !error && (
                             <>
                                 {paginatedCorrespondences.length > 0 ? (
-                                    <div>
+                                    <div className="mb-8">
                                         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
                                             {paginatedCorrespondences.map(doc => (
                                                 <DocumentCard key={doc.id} document={doc} onClick={handleCardClick} />
@@ -278,15 +230,9 @@ const Devonxona: React.FC = () => {
                                         </div>
                                         {totalPages > 1 && (
                                             <div className="flex items-center justify-center gap-4 mt-8">
-                                                <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="p-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Oldingi sahifa">
-                                                    <ChevronLeftIcon className="w-5 h-5" />
-                                                </button>
-                                                <span className="text-sm text-white/70">
-                                                    Sahifa {currentPage} / {totalPages}
-                                                </span>
-                                                <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="p-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Keyingi sahifa">
-                                                    <ChevronRightIcon className="w-5 h-5" />
-                                                </button>
+                                                <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="p-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Oldingi sahifa"><ChevronLeftIcon className="w-5 h-5" /></button>
+                                                <span className="text-sm text-white/70">Sahifa {currentPage} / {totalPages}</span>
+                                                <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="p-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Keyingi sahifa"><ChevronRightIcon className="w-5 h-5" /></button>
                                             </div>
                                         )}
                                     </div>
@@ -299,22 +245,43 @@ const Devonxona: React.FC = () => {
                             </>
                         )}
 
-                        {/* New Chart Section */}
-                        <div className="mt-10 pt-6 border-t border-white/10">
-                            <h2 className="text-xl font-bold mb-4">Departamentlar bo'yicha hujjatlar</h2>
-                            <div className="h-80 bg-black/10 border border-white/10 rounded-xl p-4">
-                                <DocsPerDeptChart 
-                                    data={correspondences} 
-                                    onBarClick={handleDepartmentFilterClick}
-                                    activeFilter={filters.activeDepartment}
-                                />
+                        {!loading && (
+                            <div className="mt-10 pt-6 border-t border-white/10">
+                                <div className="flex flex-col lg:flex-row gap-8">
+                                    {/* --- ИЗМЕНЕН ПОРЯДОК БЛОКОВ --- */}
+                                    
+                                    {/* СНАЧАЛА СТОЛБЧАТАЯ ДИАГРАММА (СЛЕВА) */}
+                                    <div className="lg:w-2/3">
+                                        <h2 className="text-xl font-bold mb-4">Departamentlar bo'yicha hujjatlar</h2>
+                                        <div className="h-64 bg-black/10 border border-white/10 rounded-xl p-4">
+                                            <DocsPerDeptChart
+                                                data={correspondences}
+                                                onBarClick={handleDepartmentFilterClick}
+                                                activeFilter={filters.activeDepartment}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* ПОТОМ КРУГОВАЯ ДИАГРАММА (СПРАВА) */}
+                                    <div className="lg:w-1/3">
+                                        <h2 className="text-xl font-bold mb-4">Hujjatlar Holati</h2>
+                                        <div className="h-64 bg-black/10 border border-white/10 rounded-xl p-4">
+                                            <StatusDistributionChart
+                                                data={chartData}
+                                                onSliceClick={handleStatusFilterClick}
+                                                activeFilter={filters.activeStatus}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </main>
                 </div>
             </div>
+
             {isCreateModalOpen && (
-                <CreateCorrespondenceModal 
+                <CreateCorrespondenceModal
                     onClose={() => setCreateModalOpen(false)}
                     onSuccess={fetchData}
                 />
