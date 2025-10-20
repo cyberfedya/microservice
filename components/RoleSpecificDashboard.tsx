@@ -16,14 +16,14 @@ const RoleSpecificDashboard: React.FC<RoleSpecificDashboardProps> = ({ user }) =
         const [content, setContent] = useState('');
         const [loading, setLoading] = useState(false);
         const [success, setSuccess] = useState('');
-        
+
         const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
             setLoading(true);
             setSuccess('');
             try {
                 // --- ИЗМЕНЕНИЕ: Убираем 4-й аргумент 'authUser' ---
-                await createIncomingTask(title, content, "Fuqaro murojaati (Resepshn)");
+                await createIncomingTask(title, content, "Fuqaro murojaati (Resepshn)", "Murojaatlar"); // Добавили "Murojaatlar" как kartoteka
                 setSuccess('Murojaat muvaffaqiyatli ro\'yxatga olindi va Bank apparatiga yuborildi.');
                 setTitle('');
                 setContent('');
@@ -60,19 +60,19 @@ const RoleSpecificDashboard: React.FC<RoleSpecificDashboardProps> = ({ user }) =
         );
     }
 
-    const renderSecretaryDashboard = (secretaryType: string) => {
-         const [title, setTitle] = useState('');
-         const [content, setContent] = useState('');
-         const [loading, setLoading] = useState(false);
-         const [success, setSuccess] = useState('');
-         
-         const handleSubmit = async (e: React.FormEvent) => {
+    const renderSecretaryDashboard = (secretaryType: string, kartoteka: string) => { // Добавили kartoteka
+        const [title, setTitle] = useState('');
+        const [content, setContent] = useState('');
+        const [loading, setLoading] = useState(false);
+        const [success, setSuccess] = useState('');
+
+        const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
             setLoading(true);
             setSuccess('');
             try {
                 // --- ИЗМЕНЕНИЕ: Убираем 4-й аргумент 'authUser' ---
-                await createIncomingTask(title, content, secretaryType);
+                await createIncomingTask(title, content, secretaryType, kartoteka); // Передаем kartoteka
                 setSuccess('Topshiriq muvaffaqiyatli tizimga kiritildi va Bank apparatiga yuborildi.');
                 setTitle('');
                 setContent('');
@@ -116,14 +116,15 @@ const RoleSpecificDashboard: React.FC<RoleSpecificDashboardProps> = ({ user }) =
             <p className="text-white/80">Sizning rolingiz uchun maxsus boshqaruv paneli mavjud emas.</p>
         </div>
     );
-    
-    switch (user.role) {
+
+    // ИСПРАВЛЕНИЕ: user.role.name
+    switch (user.role.name) {
         case UserRole.Resepshn:
             return renderReceptionDashboard();
         case UserRole.BankKengashiKotibi:
-            return renderSecretaryDashboard("Bank Kengashi");
+            return renderSecretaryDashboard("Bank Kengashi", "Bank Kengashi"); // Указали kartoteka
         case UserRole.KollegialOrganKotibi:
-            return renderSecretaryDashboard("Kollegial Organ");
+            return renderSecretaryDashboard("Kollegial Organ", "Kollegial Organ"); // Указали kartoteka
         default:
             return renderDefault();
     }

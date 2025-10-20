@@ -77,7 +77,8 @@ const ApiManagement: React.FC = () => {
         };
     }, []);
 
-    if (user?.role !== UserRole.Admin) {
+    // ИСПРАВЛЕНИЕ: user.role.name
+    if (user?.role.name !== UserRole.Admin) {
         return <Navigate to="/dashboard" />;
     }
 

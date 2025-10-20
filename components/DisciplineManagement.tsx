@@ -33,11 +33,11 @@ const DisciplineManagement: React.FC = () => {
         setLoading(true);
         try {
             const [userData, violationData, correspondenceData] = await Promise.all([
-                getUsers(), 
+                getUsers(),
                 getAllViolations(),
                 getCorrespondences() // Загружаем документы для привязки
             ]);
-            setUsers(userData.filter((u: User) => u.role !== UserRole.Admin)); // Не показываем админа в списке
+            setUsers(userData.filter((u: User) => u.role.name !== UserRole.Admin)); // Не показываем админа в списке
             setViolations(violationData);
             setCorrespondences(correspondenceData);
         } catch (err) {
@@ -83,7 +83,8 @@ const DisciplineManagement: React.FC = () => {
         }
     };
 
-    if (!currentUser || ![UserRole.Admin, UserRole.BankApparati, UserRole.Boshqaruv].includes(currentUser.role as UserRole)) {
+    // ИСПРАВЛЕНИЕ: currentUser.role.name
+    if (!currentUser || ![UserRole.Admin, UserRole.BankApparati, UserRole.Boshqaruv].includes(currentUser.role.name as UserRole)) {
         return <Navigate to="/dashboard" />;
     }
 
@@ -95,7 +96,8 @@ const DisciplineManagement: React.FC = () => {
             <div className="space-y-6 text-white">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">Ijro Intizomi Nazorati</h1>
-                    {currentUser.role === UserRole.Admin && (
+                    {/* ИСПРАВЛЕНИЕ: currentUser.role.name */}
+                    {currentUser.role.name === UserRole.Admin && (
                         <button onClick={handleOpenModal} className="flex items-center gap-2 px-4 py-2 text-white bg-primary rounded-lg shadow hover:bg-primary-dark transition-colors">
                             <PlusIcon className="w-5 h-5" />
                             <span>Qo'shish</span>
@@ -118,12 +120,12 @@ const DisciplineManagement: React.FC = () => {
                                     const isExpanded = expandedUserId === u.id;
                                     return (
                                         <React.Fragment key={u.id}>
-                                            <tr 
+                                            <tr
                                                 className="border-b border-white/10 hover:bg-white/20 cursor-pointer"
                                                 onClick={() => setExpandedUserId(isExpanded ? null : u.id)}
                                             >
                                                 <td className="px-6 py-4 font-medium text-white">{u.name}</td>
-                                                <td className="px-6 py-4">{u.department}</td>
+                                                <td className="px-6 py-4">{u.department.name}</td>
                                                 <td className={`px-6 py-4 text-center font-bold text-lg ${userViolations.length > 0 ? 'text-amber-400' : 'text-green-400'}`}>{userViolations.length}</td>
                                             </tr>
                                             {isExpanded && (
@@ -134,7 +136,7 @@ const DisciplineManagement: React.FC = () => {
                                                             <ul className="space-y-2 list-disc list-inside text-sm">
                                                                 {userViolations.map(v => (
                                                                     <li key={v.id}>
-                                                                        <span className="font-semibold">{new Date(v.date).toLocaleDateString()}:</span> 
+                                                                        <span className="font-semibold">{new Date(v.date).toLocaleDateString()}:</span>
                                                                         <span className="mx-2 text-red-300">({v.type})</span>
                                                                         <span>{v.reason}</span>
                                                                         {v.correspondence && (
@@ -170,7 +172,7 @@ const DisciplineManagement: React.FC = () => {
                                     <label htmlFor="userId" className="block mb-1 text-sm font-medium text-white/80">Xodim</label>
                                     <select name="userId" id="userId" value={formData.userId} onChange={handleChange} required className="w-full p-2 bg-white/10 border border-white/20 rounded-md">
                                         <option value="" disabled>Xodimni tanlang...</option>
-                                        {users.map(u => <option key={u.id} value={u.id} className="text-black">{u.name} ({u.department})</option>)}
+                                        {users.map(u => <option key={u.id} value={u.id} className="text-black">{u.name} ({u.department.name})</option>)}
                                     </select>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">

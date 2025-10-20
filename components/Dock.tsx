@@ -9,7 +9,7 @@ import { UsersIcon, KeyIcon, ScaleIcon } from './icons/IconComponents';
 
 const Dock: React.FC = () => {
     const { user } = useAuth();
-    
+
     const navItems = [
         // { path: '/dashboard', label: 'Bosh sahifa', icon: <HomeIcon />, roles: Object.values(UserRole) },
         { path: '/users', label: 'Foydalanuvchilar', icon: <UsersIcon />, roles: [UserRole.Admin] },
@@ -17,8 +17,9 @@ const Dock: React.FC = () => {
         { path: '/discipline', label: 'Intizom', icon: <ScaleIcon />, roles: [UserRole.Admin] },
         // { path: '/api-docs', label: 'API', icon: <CommandLineIcon />, roles: [UserRole.Admin] },
     ];
-    
-    const filteredNavItems = navItems.filter(item => user && item.roles.includes(user.role as UserRole));
+
+    // ИСПРАВЛЕНИЕ: user.role.name
+    const filteredNavItems = navItems.filter(item => user && item.roles.includes(user.role.name as UserRole));
 
     return (
         <footer className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">

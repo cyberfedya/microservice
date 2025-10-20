@@ -26,12 +26,16 @@ const UserManagement: React.FC = () => {
             setUsers(userData);
             setRoles(roleData);
             setDepartments(deptData);
-            if (roleData.length > 0) emptyForm.role = roleData[0].name;
-            if (deptData.length > 0) emptyForm.department = deptData[0].name;
-            setFormData(emptyForm);
+            // Устанавливаем значения по умолчанию для пустой формы
+            const defaultRole = roleData.length > 0 ? roleData[0].name : '';
+            const defaultDept = deptData.length > 0 ? deptData[0].name : '';
+            emptyForm.role = defaultRole;
+            emptyForm.department = defaultDept;
+            setFormData(emptyForm); // Обновляем пустую форму с дефолтами
             setLoading(false);
         }).catch(() => setLoading(false));
     };
+
 
     useEffect(() => {
         fetchData();
@@ -40,13 +44,18 @@ const UserManagement: React.FC = () => {
     const handleOpenModal = (userToEdit: User | null) => {
         setEditingUser(userToEdit);
         if (userToEdit) {
-            setFormData({ name: userToEdit.name, email: userToEdit.email, role: userToEdit.role, department: userToEdit.department });
+            // Убедимся, что role и department это строки имен, а не объекты
+            const roleName = typeof userToEdit.role === 'object' ? userToEdit.role.name : userToEdit.role;
+            const departmentName = typeof userToEdit.department === 'object' ? userToEdit.department.name : userToEdit.department;
+            setFormData({ name: userToEdit.name, email: userToEdit.email, password: '', role: roleName, department: departmentName });
         } else {
+             // Используем пустую форму с установленными значениями по умолчанию
             setFormData(emptyForm);
         }
         setIsModalOpen(true);
     };
-    
+
+
     // ... (handleCloseModal и handleChange остаются без изменений)
     const handleCloseModal = () => {
         setIsModalOpen(false);
@@ -61,29 +70,32 @@ const UserManagement: React.FC = () => {
 
     // ... (handleSubmit и handleDelete остаются почти без изменений, только вызовы)
      const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        // При редактировании пароль не отправляем
-        const dataToSend = { ...formData };
-        if (editingUser) {
-            delete dataToSend.password;
-            await updateUser(editingUser.id, dataToSend);
-        } else {
-            await addUser(dataToSend);
-        }
-        fetchData();
-        handleCloseModal();
-    };
+         e.preventDefault();
+         setLoading(true);
+         // При редактировании пароль не отправляем, если он не введен
+         const dataToSend = { ...formData };
+         if (editingUser) {
+             if (!dataToSend.password) { // Не отправляем пустой пароль при редактировании
+                 delete dataToSend.password;
+             }
+             await updateUser(editingUser.id, dataToSend);
+         } else {
+             await addUser(dataToSend);
+         }
+         fetchData();
+         handleCloseModal();
+     };
 
-    const handleDelete = async (userId: number) => {
-        if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-            setLoading(true);
-            await deleteUser(userId);
-            fetchData();
-        }
-    };
-    
-    if (user?.role !== UserRole.Admin) {
+     const handleDelete = async (userId: number) => {
+         if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+             setLoading(true);
+             await deleteUser(userId);
+             fetchData();
+         }
+     };
+
+    // ИСПРАВЛЕНИЕ: user.role.name
+    if (user?.role.name !== UserRole.Admin) {
         return <Navigate to="/dashboard" />;
     }
 
@@ -118,8 +130,10 @@ const UserManagement: React.FC = () => {
                                     <tr key={u.id} className="border-b border-white/10 hover:bg-white/20">
                                         <td className="px-6 py-4 font-medium text-white">{u.name}</td>
                                         <td className="px-6 py-4">{u.email}</td>
-                                        <td className="px-6 py-4">{u.role}</td>
-                                        <td className="px-6 py-4">{u.department}</td>
+                                        {/* Отображаем имя роли */}
+                                        <td className="px-6 py-4">{typeof u.role === 'object' ? u.role.name : u.role}</td>
+                                        {/* Отображаем имя департамента */}
+                                        <td className="px-6 py-4">{typeof u.department === 'object' ? u.department.name : u.department}</td>
                                         <td className="px-6 py-4 space-x-2 text-center">
                                             <button onClick={() => handleOpenModal(u)} className="p-2 text-cyan-300 rounded-full hover:bg-cyan-500/30 transition-colors" aria-label="Edit user"><PencilIcon className="w-5 h-5"/></button>
                                             <button onClick={() => handleDelete(u.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/30 transition-colors" aria-label="Delete user"><TrashIcon className="w-5 h-5"/></button>
@@ -146,13 +160,11 @@ const UserManagement: React.FC = () => {
                                     <label htmlFor="email" className="block mb-1 text-sm font-medium text-white/80">Email Address</label>
                                     <input type="email" name="email" id="email" value={formData.email} onChange={handleChange} required className="w-full p-2 bg-white/10 border border-white/20 rounded-md" />
                                 </div>
-                                {/* --- ИЗМЕНЕНИЕ 3: Добавляем поле пароля только для НОВЫХ пользователей --- */}
-                                {!editingUser && (
-                                    <div>
-                                        <label htmlFor="password" className="block mb-1 text-sm font-medium text-white/80">Password</label>
-                                        <input type="password" name="password" id="password" value={formData.password} onChange={handleChange} required className="w-full p-2 bg-white/10 border border-white/20 rounded-md" />
-                                    </div>
-                                )}
+                                {/* --- Пароль обязателен только при создании --- */}
+                                <div>
+                                    <label htmlFor="password" className="block mb-1 text-sm font-medium text-white/80">Password {editingUser ? '(leave blank to keep current)' : ''}</label>
+                                    <input type="password" name="password" id="password" value={formData.password} onChange={handleChange} required={!editingUser} className="w-full p-2 bg-white/10 border border-white/20 rounded-md" />
+                                </div>
                                 <div>
                                     <label htmlFor="role" className="block mb-1 text-sm font-medium text-white/80">Role</label>
                                     <select name="role" id="role" value={formData.role} onChange={handleChange} required className="w-full p-2 bg-white/10 border border-white/20 rounded-md">

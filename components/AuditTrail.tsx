@@ -28,7 +28,7 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ log }) => {
                         <div className="absolute left-2 top-6 h-full border-l-2 border-slate-700 border-dashed"></div>
                         <p className="text-sm font-medium text-white/90">{entry.action}</p>
                         <p className="text-xs text-white/60">
-                            {entry.user?.name || 'Tizim'} &bull; {new Date(entry.timestamp).toLocaleString()}
+                            {entry.user?.name || 'Tizim'} &bull; {new Date(entry.createdAt).toLocaleString()}
                         </p>
                         {entry.details && <p className="mt-1 text-xs text-white/70 italic flex items-start gap-1.5"><ChatBubbleLeftEllipsisIcon className="w-3 h-3 mt-0.5 flex-shrink-0" /> "{entry.details}"</p>}
                     </li>

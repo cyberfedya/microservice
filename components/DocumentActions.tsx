@@ -51,14 +51,18 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ correspondence, curre
 
     // --- Visibility Logic ---
     const isDocActive = ![CorrespondenceStage.COMPLETED, CorrespondenceStage.CANCELLED, CorrespondenceStage.ON_HOLD].includes(correspondence.stage as CorrespondenceStage);
-    const canManage = [UserRole.Admin, UserRole.Boshqaruv, UserRole.BankApparati].includes(currentUser.role as UserRole);
-    const canDelegateInternal = currentUser.role === UserRole.Tarmoq && correspondence.mainExecutor?.id === currentUser.id && correspondence.stage === CorrespondenceStage.EXECUTION;
+    // ИСПРАВЛЕНИЕ: currentUser.role.name
+    const canManage = [UserRole.Admin, UserRole.Boshqaruv, UserRole.BankApparati].includes(currentUser.role.name as UserRole);
+    // ИСПРАВЛЕНИЕ: currentUser.role.name
+    const canDelegateInternal = currentUser.role.name === UserRole.Tarmoq && correspondence.mainExecutor?.id === currentUser.id && correspondence.stage === CorrespondenceStage.EXECUTION;
     const isOwnerOrExecutor = currentUser.id === correspondence.mainExecutor?.id || currentUser.id === correspondence.author.id;
     const canSubmitForReview = isOwnerOrExecutor && [CorrespondenceStage.DRAFTING, CorrespondenceStage.REVISION_REQUESTED, CorrespondenceStage.EXECUTION].includes(correspondence.stage as CorrespondenceStage);
     const isUserAReviewer = correspondence.reviewers?.some(r => r.user.id === currentUser.id && r.status === 'PENDING');
     const canApproveOrReject = correspondence.stage === CorrespondenceStage.FINAL_REVIEW && isUserAReviewer;
-    const canSign = currentUser.role === UserRole.Boshqaruv && correspondence.stage === CorrespondenceStage.SIGNATURE;
-    const canDispatch = currentUser.role === UserRole.BankApparati && correspondence.stage === CorrespondenceStage.DISPATCH;
+    // ИСПРАВЛЕНИЕ: currentUser.role.name
+    const canSign = currentUser.role.name === UserRole.Boshqaruv && correspondence.stage === CorrespondenceStage.SIGNATURE;
+    // ИСПРАВЛЕНИЕ: currentUser.role.name
+    const canDispatch = currentUser.role.name === UserRole.BankApparati && correspondence.stage === CorrespondenceStage.DISPATCH;
 
     return (
         <>
@@ -88,7 +92,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ correspondence, curre
                         <h4 className="text-md font-semibold pt-2">Ichki ijrochini tayinlash</h4>
                         <select onChange={(e) => setSelectedInternalAssignee(Number(e.target.value))} value={selectedInternalAssignee || ""} className="w-full p-2 border rounded-md bg-white/10 border-white/20 text-white">
                             <option value="" disabled>Xodimni tanlang...</option>
-                            {users.filter(u => u.department === currentUser.department && u.role === UserRole.Reviewer).map(u => (
+                            {users.filter(u => u.department.name === currentUser.department.name && u.role.name === UserRole.Reviewer).map(u => (
                                 <option key={u.id} value={u.id}>{u.name}</option>
                             ))}
                         </select>
