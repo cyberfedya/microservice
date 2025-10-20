@@ -1,4 +1,4 @@
-// docmanageapp/server/prisma/schema.prisma
+// server/prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -9,6 +9,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums
 enum DocumentType {
   Kiruvchi
   Chiquvchi
@@ -16,9 +17,9 @@ enum DocumentType {
 
 enum DocumentStage {
   PENDING_REGISTRATION
-  REGISTRATION
+  REGISTRATION // Не используется явно в коде, можно убрать или оставить для будущего
   RESOLUTION
-  ASSIGNMENT
+  ASSIGNMENT // Не используется явно в коде, можно убрать или оставить для будущего
   EXECUTION
   DRAFTING
   REVISION_REQUESTED
@@ -26,20 +27,21 @@ enum DocumentStage {
   DISPATCH
   FINAL_REVIEW
   COMPLETED
-  REJECTED
+  REJECTED // Не используется явно в коде, можно убрать или оставить для будущего
   ON_HOLD
   CANCELLED
-  ARCHIVED
+  ARCHIVED // Не используется явно в коде, можно убрать или оставить для будущего
 }
 
+// Статус больше отражает состояние выполнения, а не этап
 enum DocumentStatus {
-  YANGI
-  IJROGA_YUBORILDI
-  KORIB_CHIQILMOQDA
-  BAJARILGAN
+  YANGI             // Новый
+  IJRODA            // В исполнении (после назначения исполнителя или на этапе согласования/подписания)
+  // KORIB_CHIQILMOQDA // Можно убрать, так как этап FINAL_REVIEW/SIGNATURE это подразумевает
+  BAJARILGAN        // Завершен (COMPLETED, CANCELLED, ARCHIVED)
+  MUDDATI_OTGAN     // Просрочен (это состояние, а не статус, лучше вычислять)
 }
 
-// --- НОВЫЙ ENUM ДЛЯ СТАТУСА СОГЛАСОВАНИЯ ---
 enum ReviewStatus {
   PENDING
   APPROVED
@@ -47,6 +49,7 @@ enum ReviewStatus {
 }
 
 
+// Models
 model Role {
   id          Int      @id @default(autoincrement())
   name        String   @unique
@@ -61,49 +64,50 @@ model Department {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
+  id           Int    @id @default(autoincrement())
+  email        String @unique
   name         String?
   password     String
   roleId       Int
-  role         Role     @relation(fields: [roleId], references: [id])
+  role         Role   @relation(fields: [roleId], references: [id])
   departmentId Int
   department   Department @relation(fields: [departmentId], references: [id])
   managerId    Int?
-  manager      User?    @relation("UserManagedBy", fields: [managerId], references: [id])
-  reports      User[]   @relation("UserManagedBy")
+  manager      User?  @relation("UserManagedBy", fields: [managerId], references: [id], onDelete: SetNull) // onDelete: SetNull
+  reports      User[] @relation("UserManagedBy")
 
-  documents           Document[] @relation("DocumentAuthor")
-  tasks               Document[] @relation("DocumentExecutor")
-  internalTasks       Document[] @relation("InternalDocumentExecutor")
+  // Relations
+  authoredDocuments   Document[]            @relation("DocumentAuthor")
+  mainExecutorDocs    Document[]            @relation("DocumentExecutor")
+  internalAssigneeDocs Document[]            @relation("InternalDocumentExecutor")
   violations          Violation[]
   reviews             DocumentReviewer[]
   coExecutedDocs      DocumentCoExecutor[]
   contributedDocs     DocumentContributor[]
   auditLogs           AuditLog[]
+  notifications       Notification[]
 }
 
 model Document {
-  id                 Int           @id @default(autoincrement())
+  id                 Int          @id @default(autoincrement())
   title              String
   content            String?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  type               DocumentType  @default(Kiruvchi)
-  stage              DocumentStage @default(PENDING_REGISTRATION)
-  status             DocumentStatus @default(YANGI)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  type               DocumentType
+  stage              DocumentStage @default(PENDING_REGISTRATION) // Начальный этап
+  status             DocumentStatus @default(YANGI)            // Начальный статус
   deadline           DateTime?
-  stageDeadline     DateTime?
   source             String?
   kartoteka          String?
-  metadata          Json?
+  metadata           Json?        // Для доп. данных, не используемых напрямую в логике
 
   authorId           Int
-  author             User          @relation("DocumentAuthor", fields: [authorId], references: [id])
+  author             User         @relation("DocumentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   mainExecutorId     Int?
-  mainExecutor       User?         @relation("DocumentExecutor", fields: [mainExecutorId], references: [id])
+  mainExecutor       User?        @relation("DocumentExecutor", fields: [mainExecutorId], references: [id], onDelete: SetNull) // При удалении исполнителя, документ остается
   internalAssigneeId Int?
-  internalAssignee   User?         @relation("InternalDocumentExecutor", fields: [internalAssigneeId], references: [id])
+  internalAssignee   User?        @relation("InternalDocumentExecutor", fields: [internalAssigneeId], references: [id], onDelete: SetNull) // То же самое для внутреннего
   violations         Violation[]
 
   // Relations
@@ -111,82 +115,102 @@ model Document {
   coExecutors        DocumentCoExecutor[]
   contributors       DocumentContributor[]
   auditLogs          AuditLog[]
-  aiSuggestions      AISuggestion[]
+  aiSuggestion       AISuggestion? // Один-к-одному, поэтому без []
 
   // Indexes
+  @@index([authorId])
+  @@index([mainExecutorId])
+  @@index([internalAssigneeId])
   @@index([status])
   @@index([stage])
   @@index([deadline])
-  @@index([stageDeadline])
+  @@index([type])
+  @@index([kartoteka])
 }
 
+// Intermediate tables for many-to-many
 model DocumentCoExecutor {
-  id          Int      @id @default(autoincrement())
-  documentId  Int
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assignedAt  DateTime @default(now())
+  documentId Int
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
 
-  @@unique([documentId, userId])
+  @@id([documentId, userId]) // Используем составной первичный ключ
 }
 
 model DocumentContributor {
-  id          Int      @id @default(autoincrement())
-  documentId  Int
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assignedAt  DateTime @default(now())
+  documentId Int
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
 
-  @@unique([documentId, userId])
+  @@id([documentId, userId]) // Используем составной первичный ключ
 }
 
+model DocumentReviewer {
+  status     ReviewStatus @default(PENDING)
+  comment    String?
+  updatedAt  DateTime     @updatedAt
+  documentId Int
+  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, userId]) // Используем составной первичный ключ
+}
+
+// Auxiliary tables
 model AuditLog {
   id          Int      @id @default(autoincrement())
   documentId  Int
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId      Int
+  userId      Int      // Пользователь, совершивший действие
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   timestamp   DateTime @default(now())
-  action      String
-  details     String?
+  action      String   // Описание действия
+  details     String?  // Дополнительные детали
+
+  @@index([documentId])
+  @@index([userId])
 }
 
 model AISuggestion {
   id                      Int      @id @default(autoincrement())
-  documentId             Int
-  document               Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId              Int      @unique // Связь один-к-одному с документом
+  document                Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   suggestedMainExecutorId Int?
-  reason                 String?
-  sentiment              String?
-  riskFlag               String?
-  createdAt              DateTime @default(now())
+  // Если нужно хранить предложенного юзера, добавь связь:
+  // suggestedMainExecutor User? @relation("SuggestedExecutor", fields: [suggestedMainExecutorId], references: [id], onDelete: SetNull)
+  reason                  String?
+  sentiment               String?
+  riskFlag                String?
+  createdAt               DateTime @default(now())
 }
 
 model Violation {
-  id                Int       @id @default(autoincrement())
-  date              DateTime
-  reason            String
-  type              String
-  userId            Int
-  user              User      @relation(fields: [userId], references: [id])
-  correspondenceId  Int?
-  correspondence    Document? @relation(fields: [correspondenceId], references: [id])
+  id               Int       @id @default(autoincrement())
+  date             DateTime
+  reason           String
+  type             String    // Тип взыскания
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  correspondenceId Int?      // ID связанного документа
+  correspondence   Document? @relation(fields: [correspondenceId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([correspondenceId])
 }
 
-// --- ДОБАВЛЕНА НОВАЯ МОДЕЛЬ (ПРОМЕЖУТОЧНАЯ ТАБЛИЦА) ---
-model DocumentReviewer {
-  id          Int          @id @default(autoincrement())
-  status      ReviewStatus @default(PENDING)
-  comment     String?
-  updatedAt   DateTime     @updatedAt
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  documentId  Int
-  document    Document     @relation(fields: [documentId], references: [id])
-
-  userId      Int
-  user        User         @relation(fields: [userId], references: [id])
-
-  @@unique([documentId, userId]) // Гарантирует, что один пользователь может быть в списке согласующих для документа только один раз
+  @@index([userId, isRead])
 }

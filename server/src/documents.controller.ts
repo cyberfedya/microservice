@@ -136,7 +136,8 @@ export async function updateExecutors(req: Request, res: Response, next: NextFun
 
 export async function updateDeadline(req: Request, res: Response, next: NextFunction) {
     try {
-        const updatedDocument = await DocumentService.updateDeadline(Number(req.params.id), req.body);
+        const doerId = (req as any).user.id;
+        const updatedDocument = await DocumentService.updateDeadline(Number(req.params.id), req.body, doerId);
         res.json(updatedDocument);
     } catch (e) {
         console.error("Error in updateDeadline controller:", e);

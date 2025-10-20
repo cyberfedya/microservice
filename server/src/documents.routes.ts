@@ -18,10 +18,14 @@ export function registerDocumentRoutes(app: Express) {
     router.post('/:id/reject-review', controller.rejectReview);
     router.post('/:id/sign', controller.signDocument);
     router.post('/:id/dispatch', controller.dispatchDocument);
+    // router.post('/:id/hold', controller.holdCorrespondence);     // <--- Этих контроллеров нет!
+    // router.post('/:id/cancel', controller.cancelCorrespondence);  // <--- Этих контроллеров нет!
+    // router.post('/:id/delegate', controller.assignInternalEmployee); // <--- Этих контроллеров нет!
+
 
     // Document Management
     router.put('/:id/executors', controller.updateExecutors);
-    router.put('/:id/deadline', controller.updateDeadline);
+    router.put('/:id/deadline', controller.updateDeadline); // <-- Ошибка может указывать сюда, если предыдущие были неверны
 
     app.use('/api/correspondences', router);
 }
