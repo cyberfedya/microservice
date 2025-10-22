@@ -35,11 +35,11 @@ enum DocumentStage {
 
 // Статус больше отражает состояние выполнения, а не этап
 enum DocumentStatus {
-  YANGI             // Новый
-  IJRODA            // В исполнении (после назначения исполнителя или на этапе согласования/подписания)
+  YANGI          // Новый
+  IJRODA         // В исполнении (после назначения исполнителя или на этапе согласования/подписания)
   // KORIB_CHIQILMOQDA // Можно убрать, так как этап FINAL_REVIEW/SIGNATURE это подразумевает
-  BAJARILGAN        // Завершен (COMPLETED, CANCELLED, ARCHIVED)
-  MUDDATI_OTGAN     // Просрочен (это состояние, а не статус, лучше вычислять)
+  BAJARILGAN     // Завершен (COMPLETED, CANCELLED, ARCHIVED)
+  MUDDATI_OTGAN    // Просрочен (это состояние, а не статус, лучше вычислять)
 }
 
 enum ReviewStatus {
@@ -58,56 +58,65 @@ model Role {
 }
 
 model Department {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  users User[]
+  id       Int      @id @default(autoincrement())
+  name     String
+  users    User[]
+
+  // --- ДОБАВЛЕНО ДЛЯ ИЕРАРХИИ ---
+  parentId Int?
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Department[] @relation("DepartmentHierarchy")
+
+  // --- ИЗМЕНЕНО ---
+  // Имя должно быть уникальным только в пределах одного родителя
+  @@unique([name, parentId])
 }
 
 model User {
-  id           Int    @id @default(autoincrement())
-  email        String @unique
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
   name         String?
   password     String
   roleId       Int
-  role         Role   @relation(fields: [roleId], references: [id])
+  role         Role     @relation(fields: [roleId], references: [id])
   departmentId Int
   department   Department @relation(fields: [departmentId], references: [id])
   managerId    Int?
-  manager      User?  @relation("UserManagedBy", fields: [managerId], references: [id], onDelete: SetNull) // onDelete: SetNull
-  reports      User[] @relation("UserManagedBy")
+  manager      User?    @relation("UserManagedBy", fields: [managerId], references: [id], onDelete: SetNull) // onDelete: SetNull
+  reports      User[]   @relation("UserManagedBy")
 
   // Relations
-  authoredDocuments   Document[]            @relation("DocumentAuthor")
-  mainExecutorDocs    Document[]            @relation("DocumentExecutor")
-  internalAssigneeDocs Document[]            @relation("InternalDocumentExecutor")
-  violations          Violation[]
-  reviews             DocumentReviewer[]
-  coExecutedDocs      DocumentCoExecutor[]
-  contributedDocs     DocumentContributor[]
-  auditLogs           AuditLog[]
-  notifications       Notification[]
+  authoredDocuments    Document[]             @relation("DocumentAuthor")
+  mainExecutorDocs     Document[]             @relation("DocumentExecutor")
+  internalAssigneeDocs Document[]             @relation("InternalDocumentExecutor")
+  violations           Violation[]
+  reviews              DocumentReviewer[]
+  coExecutedDocs       DocumentCoExecutor[]
+  contributedDocs      DocumentContributor[]
+  auditLogs            AuditLog[]
+  notifications        Notification[]
 }
 
 model Document {
-  id                 Int          @id @default(autoincrement())
+  id                 Int            @id @default(autoincrement())
   title              String
   content            String?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
   type               DocumentType
-  stage              DocumentStage @default(PENDING_REGISTRATION) // Начальный этап
-  status             DocumentStatus @default(YANGI)            // Начальный статус
+  stage              DocumentStage  @default(PENDING_REGISTRATION) // Начальный этап
+  status             DocumentStatus @default(YANGI)                // Начальный статус
   deadline           DateTime?
   source             String?
   kartoteka          String?
-  metadata           Json?        // Для доп. данных, не используемых напрямую в логике
+  metadata           Json?          // Для доп. данных, не используемых напрямую в логике
 
   authorId           Int
-  author             User         @relation("DocumentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  author             User           @relation("DocumentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   mainExecutorId     Int?
-  mainExecutor       User?        @relation("DocumentExecutor", fields: [mainExecutorId], references: [id], onDelete: SetNull) // При удалении исполнителя, документ остается
+  mainExecutor       User?          @relation("DocumentExecutor", fields: [mainExecutorId], references: [id], onDelete: SetNull) // При удалении исполнителя, документ остается
   internalAssigneeId Int?
-  internalAssignee   User?        @relation("InternalDocumentExecutor", fields: [internalAssigneeId], references: [id], onDelete: SetNull) // То же самое для внутреннего
+  internalAssignee   User?          @relation("InternalDocumentExecutor", fields: [internalAssigneeId], references: [id], onDelete: SetNull) // То же самое для внутреннего
   violations         Violation[]
 
   // Relations
@@ -163,14 +172,14 @@ model DocumentReviewer {
 
 // Auxiliary tables
 model AuditLog {
-  id          Int      @id @default(autoincrement())
-  documentId  Int
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId      Int      // Пользователь, совершивший действие
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timestamp   DateTime @default(now())
-  action      String   // Описание действия
-  details     String?  // Дополнительные детали
+  id         Int      @id @default(autoincrement())
+  documentId Int
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     Int      // Пользователь, совершивший действие
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp  DateTime @default(now())
+  action     String   // Описание действия
+  details    String?  // Дополнительные детали
 
   @@index([documentId])
   @@index([userId])

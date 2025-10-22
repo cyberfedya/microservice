@@ -5,8 +5,6 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 // --- Вспомогательная функция для заголовков ---
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
-  // Если токена нет, не добавляем заголовок Authorization,
-  // чтобы публичные маршруты (например, логин) работали.
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
@@ -16,26 +14,50 @@ const getAuthHeaders = () => {
   return headers;
 };
 
-// --- Вспомогательная функция для обработки ответа ---
+// --- Вспомогательная функция для обработки ответа (ИСПРАВЛЕННАЯ ВЕРСИЯ) ---
 async function handleResponse(res: Response) {
-    if (!res.ok) {
-        let errorData;
-        try {
-            // Пытаемся распарсить JSON ошибки
-            errorData = await res.json();
-        } catch (e) {
-            // Если не JSON, читаем как текст
-            errorData = { error: await res.text() || res.statusText };
-        }
-        // Бросаем ошибку с сообщением из ответа или статусом
-        throw new Error(errorData?.error || `Request failed with status ${res.status}`);
+  if (!res.ok) { // Если статус ошибки (4xx, 5xx)
+    let errorData = null;
+    let errorText = `Request failed with status ${res.status}`; // Запасной текст ошибки
+
+    try {
+        // Пытаемся прочитать тело как JSON. Это действие "потребляет" тело ответа.
+        errorData = await res.json();
+        // Если получилось, используем сообщение из JSON
+        errorText = errorData?.error || JSON.stringify(errorData);
+    } catch (e) {
+        // Если не получилось прочитать как JSON (например, сервер вернул обычный текст или HTML)
+        // Мы НЕ можем снова вызвать res.text() здесь, так как тело уже прочитано (или была ошибка при чтении).
+        // Используем запасной текст ошибки со статусом.
+        console.warn(`API Error (${res.status}): Response body was not valid JSON.`);
     }
-    // Если статус 204 No Content (например, при удалении), возвращаем null или true
-    if (res.status === 204) {
-        return null; // Или можно вернуть true, в зависимости от ожиданий
-    }
-    // В остальных случаях парсим JSON
-    return res.json();
+    // Бросаем ошибку с текстом, который удалось получить.
+    throw new Error(errorText);
+  }
+
+  // Обработка успешных ответов
+  if (res.status === 204) { // No Content
+    return null; // Успешно, но нет тела ответа
+  }
+
+  // Если ответ OK и не 204, ожидаем JSON
+  try {
+    return await res.json(); // Читаем и возвращаем JSON
+  } catch (jsonParseError) {
+      console.error("Failed to parse successful response body as JSON:", jsonParseError);
+      // Если успешный ответ не парсится как JSON, это странно. Бросаем ошибку.
+      // Попытаемся прочитать как текст для лога, но это может вызвать "body stream already read", если res.json() частично прочитал поток
+      try {
+          // Важно: Клонируем ответ перед попыткой чтения как текст,
+          // так как тело может быть уже частично прочитано res.json()
+          const clonedRes = res.clone();
+          const bodyText = await clonedRes.text();
+          console.error("Response body text:", bodyText);
+      } catch (textReadError) {
+          console.error("Could not read response body text after JSON parse failed.");
+      }
+      throw new Error("Received successful status, but failed to parse response body as JSON.");
+  }
 }
 
 
@@ -46,17 +68,11 @@ export async function login(email: string, password: string) {
     headers: { "Content-Type": "application/json" }, // getAuthHeaders здесь не нужен
     body: JSON.stringify({ email, password }),
   });
-  // Обработка ответа через handleResponse
   const data = await handleResponse(res);
   if (data.token) localStorage.setItem("token", data.token);
-  // Сохраняем пользователя в localStorage для быстрого доступа при перезагрузке
   if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
   return data.user;
 }
-
-// --- Регистрация не используется, можно удалить или оставить ---
-// export async function register(email: string, name: string, password: string) { ... }
-
 
 // --- Управление пользователями ---
 export async function getUsers() {
@@ -89,9 +105,8 @@ export async function deleteUser(userId: number) {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
-  // Для DELETE handleResponse вернет null при успехе (204)
   await handleResponse(res);
-  return true; // Возвращаем true для индикации успеха
+  return true;
 }
 
 // --- Управление Ролями и Департаментами ---
@@ -113,7 +128,7 @@ export async function addRole(roleData: { name: string; description: string }) {
 
 export async function updateRole(
   roleId: number,
-  roleData: { description: string } // Обновляем только описание
+  roleData: { description: string }
 ) {
   const res = await fetch(`${API_BASE}/api/roles/${roleId}`, {
     method: "PUT",
@@ -128,7 +143,7 @@ export async function deleteRole(roleId: number) {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
-  await handleResponse(res); // Вернет null при успехе
+  await handleResponse(res);
   return true;
 }
 
@@ -154,22 +169,20 @@ export async function getCorrespondenceById(id: number) {
   return handleResponse(res);
 }
 
-// Создание входящего
 export async function createIncomingTask(
   title: string,
   content: string,
   source: string,
-  kartoteka: string // Добавлен параметр
+  kartoteka: string
 ) {
   const res = await fetch(`${API_BASE}/api/correspondences/incoming`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ title, content, source, kartoteka }), // Передаем kartoteka
+    body: JSON.stringify({ title, content, source, kartoteka }),
   });
   return handleResponse(res);
 }
 
-// Создание исходящего
 export async function createOutgoingCorrespondence(data: { title: string; content: string; kartoteka: string; }) {
     const res = await fetch(`${API_BASE}/api/correspondences/outgoing`, {
         method: "POST",
@@ -266,42 +279,35 @@ export async function markNotificationAsRead(notificationId: number) {
 
 // --- START: НОВЫЕ/ИСПРАВЛЕННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С ДОКУМЕНТАМИ ---
 
-// Функция для постановки документа на паузу
 export async function holdCorrespondence(documentId: number) {
-    // Используем эндпоинт, который мы добавили в controller/routes
     const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/hold`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        // Тело запроса не нужно
-    });
-    return handleResponse(res); // Возвращаем обновленный документ
-}
-
-// Функция для отмены документа
-export async function cancelCorrespondence(documentId: number, reason: string) {
-    if (!reason || reason.trim() === "") throw new Error("Cancellation reason is required");
-    // Используем эндпоинт, который мы добавили
-    const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/cancel`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ reason }), // Отправляем причину в теле
-    });
-    return handleResponse(res); // Возвращаем обновленный документ
-}
-
-// Функция для обновления дедлайна
-export async function updateDeadline(documentId: number, deadlines: { deadline?: string | null }) { // Принимает deadline: string | null
-    const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/deadline`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(deadlines), // Отправляем { deadline: "YYYY-MM-DD" } или { deadline: null }
     });
     return handleResponse(res);
 }
 
-// Функция для обновления всех исполнителей
+export async function cancelCorrespondence(documentId: number, reason: string) {
+    if (!reason || reason.trim() === "") throw new Error("Cancellation reason is required");
+    const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/cancel`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ reason }),
+    });
+    return handleResponse(res);
+}
+
+export async function updateDeadline(documentId: number, deadlines: { deadline?: string | null }) {
+    const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/deadline`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(deadlines),
+    });
+    return handleResponse(res);
+}
+
 interface ExecutorsPayload {
-    mainExecutorId?: number | null; // Разрешаем null для снятия
+    mainExecutorId?: number | null;
     coExecutorIds?: number[];
     contributorIds?: number[];
 }
@@ -314,12 +320,11 @@ export async function updateExecutors(documentId: number, payload: ExecutorsPayl
     return handleResponse(res);
 }
 
-// Функция для назначения внутреннего исполнителя
 export async function assignInternalEmployee(documentId: number, internalAssigneeId: number) {
-     const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/delegate`, { // Используем правильный эндпоинт
+     const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/delegate`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ internalAssigneeId }), // Отправляем ID в теле
+        body: JSON.stringify({ internalAssigneeId }),
     });
     return handleResponse(res);
 }
