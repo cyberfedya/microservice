@@ -18,10 +18,8 @@ export function registerDocumentRoutes(app: Express) {
     router.post('/:id/reject-review', controller.rejectReview);
     router.post('/:id/sign', controller.signDocument);
     router.post('/:id/dispatch', controller.dispatchDocument);
-    // router.post('/:id/hold', controller.holdCorrespondence);     // <--- Этих контроллеров нет!
-    // router.post('/:id/cancel', controller.cancelCorrespondence);  // <--- Этих контроллеров нет!
-    // router.post('/:id/delegate', controller.assignInternalEmployee); // <--- Этих контроллеров нет!
-
+    router.post('/:id/hold', controller.holdCorrespondence);
+    router.post('/:id/cancel', controller.cancelCorrespondence);
 
     // Document Management
     router.put('/:id/executors', controller.updateExecutors);

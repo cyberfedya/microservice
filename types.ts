@@ -63,34 +63,34 @@ export interface Correspondence {
     kartoteka?: string | null; // Может отсутствовать
     source?: string | null; // Источник может отсутствовать
 
-    createdAt: string;
-    updatedAt: string;
+    createdAt: string;
+    updatedAt: string;
 
-    author: { id: number; name: string; }; // Имя автора должно быть string
-    mainExecutor?: { id: number; name: string; department: { name: string; }; } | null; // Имя исполнителя string
-    internalAssignee?: { id: number; name: string; } | null; // Имя исполнителя string
-    reviewers?: DocumentReviewer[] | null;
-    coExecutors?: DocumentCoExecutor[] | null;
-    contributors?: DocumentContributor[] | null;
-    auditLog?: DocumentAuditLog[] | null; // Используем DocumentAuditLog
+    author: { id: number; name: string; }; // Имя автора должно быть string
+    mainExecutor?: { id: number; name: string; department: { name: string; }; } | null; // Имя исполнителя string
+    internalAssignee?: { id: number; name: string; } | null; // Имя исполнителя string
+    reviewers?: DocumentReviewer[] | null;
+    coExecutors?: DocumentCoExecutor[] | null;
+    contributors?: DocumentContributor[] | null;
+    auditLogs?: DocumentAuditLog[] | null;
 }
 
 // --- Тип для Нарушений ---
 export interface Violation {
-    id: number;
-    date: string;
-    reason: string;
-    type: string;
-    user: { id: number; name: string }; // Имя пользователя string
-    correspondence?: { id: number; title: string } | null; // Связанный документ (опционально)
+    id: number;
+    date: string;
+    reason: string;
+    type: string;
+    user: { id: number; name: string };
+    correspondence?: { id: number; title: string } | null;
 }
 
 // --- Тип для Уведомлений ---
 export interface Notification {
-    id: number;
-    message: string;
-    link?: string | null; // Ссылка может отсутствовать
-    isRead: boolean; // Добавлено поле isRead, как в базе
-    createdAt: string;
-    userId: number; // Добавлено userId, как в базе
+    id: number;
+    message: string;
+    link?: string | null;
+    isRead: boolean;
+    createdAt: string;
+    userId: number;
 }

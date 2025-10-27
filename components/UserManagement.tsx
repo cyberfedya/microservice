@@ -158,7 +158,7 @@ const UserManagement: React.FC = () => {
             return;
         }
         const userToDelete = users.find(u => u.id === userId);
-         if (userToDelete?.role === UserRole.Admin) { // Сравниваем строку с enum
+         if (userToDelete?.role?.name === UserRole.Admin) {
              setError("Cannot delete the Admin user.");
              return;
          }
@@ -215,15 +215,15 @@ const UserManagement: React.FC = () => {
                                     <tr key={u.id} className="border-b border-white/10 hover:bg-white/20">
                                         <td className="px-6 py-4 font-medium text-white">{u.name || '-'}</td>
                                         <td className="px-6 py-4">{u.email}</td>
-                                        <td className="px-6 py-4">{u.role}</td> {/* Теперь это строка */}
-                                        <td className="px-6 py-4">{u.department}</td> {/* Теперь это строка */}
+                                        <td className="px-6 py-4">{u.role?.name || '-'}</td>
+                                        <td className="px-6 py-4">{u.department?.name || '-'}</td>
                                         <td className="px-6 py-4 space-x-2 text-center">
                                             <button onClick={() => handleOpenModal(u)} className="p-2 text-cyan-300 rounded-full hover:bg-cyan-500/30 transition-colors" aria-label="Edit user"><PencilIcon className="w-5 h-5"/></button>
                                             <button
                                                 onClick={() => handleDelete(u.id)}
-                                                className={`p-2 rounded-full transition-colors ${u.role === UserRole.Admin || u.id === user?.id ? 'text-gray-500 cursor-not-allowed' : 'text-red-400 hover:bg-red-500/30'}`}
+                                                className={`p-2 rounded-full transition-colors ${u.role?.name === UserRole.Admin || u.id === user?.id ? 'text-gray-500 cursor-not-allowed' : 'text-red-400 hover:bg-red-500/30'}`}
                                                 aria-label="Delete user"
-                                                disabled={u.role === UserRole.Admin || u.id === user?.id} // Нельзя удалить Админа или себя
+                                                disabled={u.role?.name === UserRole.Admin || u.id === user?.id}
                                             >
                                                 <TrashIcon className="w-5 h-5"/>
                                             </button>

@@ -144,3 +144,27 @@ export async function updateDeadline(req: Request, res: Response, next: NextFunc
         next(e);
     }
 }
+
+export async function holdCorrespondence(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).user.id;
+        const updatedDocument = await DocumentService.holdCorrespondence(Number(req.params.id), userId);
+        res.json(updatedDocument);
+    } catch (e) {
+        console.error("Error in holdCorrespondence controller:", e);
+        next(e);
+    }
+}
+
+export async function cancelCorrespondence(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).user.id;
+        const { reason } = req.body;
+        if (!reason) return res.status(400).json({ error: "Cancellation reason is required" });
+        const updatedDocument = await DocumentService.cancelCorrespondence(Number(req.params.id), userId, reason);
+        res.json(updatedDocument);
+    } catch (e) {
+        console.error("Error in cancelCorrespondence controller:", e);
+        next(e);
+    }
+}

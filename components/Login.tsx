@@ -38,13 +38,13 @@ const Login: React.FC = () => {
   };
 
   const quickLoginUsers = [
-      MOCK_USERS.find(u => u.role === UserRole.Admin),
-      MOCK_USERS.find(u => u.role === UserRole.BankApparati),
-      MOCK_USERS.find(u => u.role === UserRole.Boshqaruv),
-      MOCK_USERS.find(u => u.role === UserRole.Yordamchi),
-      MOCK_USERS.find(u => u.role === UserRole.Tarmoq),
-      MOCK_USERS.find(u => u.role === UserRole.Resepshn),
-      MOCK_USERS.find(u => u.role === UserRole.BankKengashiKotibi),
+      MOCK_USERS.find(u => u.role.name === UserRole.Admin),
+      MOCK_USERS.find(u => u.role.name === UserRole.BankApparati),
+      MOCK_USERS.find(u => u.role.name === UserRole.Boshqaruv),
+      MOCK_USERS.find(u => u.role.name === UserRole.Yordamchi),
+      MOCK_USERS.find(u => u.role.name === UserRole.Tarmoq),
+      MOCK_USERS.find(u => u.role.name === UserRole.Resepshn),
+      MOCK_USERS.find(u => u.role.name === UserRole.BankKengashiKotibi),
   ].filter(Boolean) as any[];
 
 
@@ -113,7 +113,7 @@ const Login: React.FC = () => {
             <div className="grid grid-cols-2 gap-3 mt-4">
                 {quickLoginUsers.map(user => (
                     <button key={user.id} onClick={() => quickSetEmail(user.email)} className="px-4 py-2 text-sm text-white rounded-md bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
-                        {user.role}
+                        {user.role.name}
                     </button>
                 ))}
             </div>

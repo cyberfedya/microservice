@@ -63,7 +63,7 @@ const ExecutorsModal: React.FC<ExecutorsModalProps> = ({ isOpen, onClose, onSave
                     <div>
                         <label className="block mb-1 text-sm font-medium text-white/80">Qo'shimcha Ijrochilar</label>
                         <select multiple value={selectedCoExecutors.map(String)} onChange={(e) => setSelectedCoExecutors(Array.from(e.target.selectedOptions, option => Number(option.value)))} className="w-full p-2 h-32 bg-white/10 border border-white/20 rounded-md">
-                            {users.filter(u => u.role === UserRole.Tarmoq).map(u => <option key={u.id} value={u.id} className="text-black p-1">{u.name}</option>)}
+                            {users.filter(u => u.role.name === UserRole.Tarmoq).map(u => <option key={u.id} value={u.id} className="text-black p-1">{u.name}</option>)}
                         </select>
                     </div>
                     <div>

@@ -122,7 +122,7 @@ const CorrespondenceView: React.FC = () => {
                             </div>
                         )}
 
-                        <AuditTrail log={correspondence.auditLog} />
+                        <AuditTrail log={correspondence.auditLogs} />
                         
                         <DocumentActions
                             correspondence={correspondence}

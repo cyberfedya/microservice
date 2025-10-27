@@ -41,7 +41,7 @@ export async function createUser(data: CreateUserData) {
   }
 
   const roleRecord = await prisma.role.findUnique({ where: { name: role } });
-  const departmentRecord = await prisma.department.findUnique({ where: { name: department } });
+  const departmentRecord = await prisma.department.findFirst({ where: { name: department } });
 
   if (!roleRecord) throw new Error(`Role with name "${role}" not found.`);
   if (!departmentRecord) throw new Error(`Department with name "${department}" not found.`);
@@ -93,7 +93,7 @@ export async function updateUser(id: number, data: UpdateUserData) {
 
   // Если передан департамент, находим его ID
   if (department) {
-    const departmentRecord = await prisma.department.findUnique({ where: { name: department } });
+    const departmentRecord = await prisma.department.findFirst({ where: { name: department } });
     if (!departmentRecord) throw new Error(`Department with name "${department}" not found.`);
     updateData.departmentId = departmentRecord.id;
   }
