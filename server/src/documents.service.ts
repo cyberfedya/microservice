@@ -4,12 +4,17 @@ import { prisma } from "./prisma";
 // --- Вспомогательная функция для создания записи в аудит лог ---
 async function createAuditLog(documentId: number, action: string, userId?: number, details?: string) {
     try {
+        // userId обязателен в схеме, поэтому если не передан - пропускаем создание лога
+        if (!userId) {
+            console.warn(`Skipping audit log creation: userId is required for document ${documentId}`);
+            return;
+        }
         await prisma.auditLog.create({
             data: {
                 documentId,
                 userId,
                 action,
-                details
+                details: details || null
                 // timestamp установится автоматически через @default(now())
             }
         });
@@ -170,20 +175,38 @@ export async function createOutgoing(data: { title: string, content?: string, ka
 }
 
 export async function submitForReview(documentId: number, submitterId: number) {
-    const requiredReviewers = await prisma.user.findMany({
-        where: {
-            OR: [
-                { role: { name: 'Bank apparati' } },
-                { department: { name: 'Yuridik Departament' } },
-                { department: { name: 'Komplayens nazorat' } },
-            ]
-        },
-        select: { id: true, name: true }
+    // Находим пользователей из трех категорий: Bank apparati роль, Yuridik департамент, Komplayens департамент
+    const bankApparatiUsers = await prisma.user.findMany({
+        where: { role: { name: 'Bank apparati' } },
+        select: { id: true, name: true, department: { select: { name: true } } }
     });
 
+    const yuridikUsers = await prisma.user.findMany({
+        where: { department: { name: 'Yuridik departament' } },
+        select: { id: true, name: true, department: { select: { name: true } } }
+    });
+
+    const komplayensUsers = await prisma.user.findMany({
+        where: { department: { name: 'Komplaens nazorat departamenti' } },
+        select: { id: true, name: true, department: { select: { name: true } } }
+    });
+
+    // Объединяем всех уникальных пользователей
+    const allReviewersMap = new Map<number, { id: number; name: string }>();
+    
+    [...bankApparatiUsers, ...yuridikUsers, ...komplayensUsers].forEach(user => {
+        if (!allReviewersMap.has(user.id) && user.name) {
+            allReviewersMap.set(user.id, { id: user.id, name: user.name });
+        }
+    });
+
+    const requiredReviewers = Array.from(allReviewersMap.values());
+
     if (requiredReviewers.length === 0) {
-        throw new Error("Required reviewers not found. Please seed the database.");
+        throw new Error("Required reviewers not found. Please seed the database with users from 'Bank apparati' role, 'Yuridik Departament', and 'Komplayens nazorat' departments.");
     }
+
+    console.log(`Found ${requiredReviewers.length} reviewers for document ${documentId}:`, requiredReviewers.map(r => r.name));
 
     const document = await prisma.document.findUnique({ where: {id: documentId }, select: { title: true }});
     if (!document) throw new Error("Document not found");
@@ -408,7 +431,7 @@ export async function updateExecutors(documentId: number, payload: { mainExecuto
             if(currentDoc?.stage && stagesEligibleForExecution.includes(currentDoc.stage)) {
                  await tx.document.update({
                      where: { id: documentId },
-                     data: { stage: 'EXECUTION', status: 'IJROGA_YUBORILDI' }
+                     data: { stage: 'EXECUTION', status: 'IJRODA' }
                  });
                  await createAuditLog(documentId, 'Hujjat ijroga o\'tkazildi', doerId, `Asosiy ijrochi tayinlandi: ${mainExecutorName}`);
             }

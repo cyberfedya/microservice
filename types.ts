@@ -5,25 +5,29 @@
 
 // --- Базовые типы для Ролей и Департаментов ---
 export interface Role {
-    id: number; // ID должен быть числом, как в базе данных
-    name: string;
-    description?: string; // Описание может отсутствовать
+    id: number; // ID должен быть числом, как в базе данных
+    name: string;
+    description?: string; // Описание может отсутствовать
 }
 
 export interface Department {
-    id: number; // ID должен быть числом
-    name: string;
+    id: number; // ID должен быть числом
+    name: string;
+    parentId?: number | null; // Для иерархии департаментов
+    children?: Department[]; // Дочерние департаменты
 }
 
 // --- Тип для Пользователя ---
-// Теперь User содержит полные объекты Role и Department
+// Теперь User содержит полные объекты Role и Department, а также departmentId и departmentName
 export interface User {
-    id: number;
-    name: string;
-    email: string;
-    role: Role; // Используем интерфейс Role
-    department: Department; // Используем интерфейс Department
-    managerId?: number | null;
+    id: number;
+    name: string;
+    email: string;
+    role: Role; // Используем интерфейс Role
+    department: Department; // Используем интерфейс Department
+    departmentId?: number; // ID департамента (для удобства)
+    departmentName?: string; // Имя департамента (для удобства)
+    managerId?: number | null;
 }
 
 // --- Типы для Документов (Correspondence) ---

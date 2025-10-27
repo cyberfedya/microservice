@@ -4,14 +4,15 @@ import { prisma } from "./prisma";
 import { User } from '@prisma/client'; // Импортируем тип User из Prisma
 
 // Вспомогательная функция для форматирования пользователя для ответа API
-// Убираем пароль и возвращаем имена роли и департамента
-const formatUserForApi = (user: User & { role: { name: string }, department: { name: string } }) => {
+// Убираем пароль и возвращаем имена роли и департамента, а также их ID
+const formatUserForApi = (user: User & { role: { name: string }, department: { id: number, name: string } }) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, roleId, departmentId, ...rest } = user;
   return {
     ...rest,
     role: user.role.name,
-    department: user.department.name,
+    departmentId: user.department.id,
+    departmentName: user.department.name,
   };
 };
 
@@ -30,21 +31,32 @@ interface CreateUserData {
   email: string;
   password?: string; // Пароль обязателен только при создании
   role: string; // Имя роли
-  department: string; // Имя департамента
+  departmentId?: number; // ID департамента (новый формат)
+  department?: string; // Имя департамента (старый формат, для обратной совместимости)
 }
 
 export async function createUser(data: CreateUserData) {
-  const { name, email, password, role, department } = data;
+  const { name, email, password, role, departmentId, department } = data;
 
   if (!password) {
     throw new Error("Password is required for new users");
   }
 
   const roleRecord = await prisma.role.findUnique({ where: { name: role } });
-  const departmentRecord = await prisma.department.findFirst({ where: { name: department } });
+  
+  // Поддерживаем оба формата: departmentId (новый) и department name (старый)
+  let departmentRecord;
+  if (departmentId) {
+    departmentRecord = await prisma.department.findUnique({ where: { id: departmentId } });
+    if (!departmentRecord) throw new Error(`Department with ID "${departmentId}" not found.`);
+  } else if (department) {
+    departmentRecord = await prisma.department.findFirst({ where: { name: department } });
+    if (!departmentRecord) throw new Error(`Department with name "${department}" not found.`);
+  } else {
+    throw new Error("Either departmentId or department name must be provided.");
+  }
 
   if (!roleRecord) throw new Error(`Role with name "${role}" not found.`);
-  if (!departmentRecord) throw new Error(`Department with name "${department}" not found.`);
 
   // Проверка на существующего пользователя
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -69,10 +81,11 @@ export async function createUser(data: CreateUserData) {
 // Типизируем data для обновления пользователя
 interface UpdateUserData extends Partial<Omit<CreateUserData, 'password'>> {
     password?: string; // Пароль необязателен при обновлении
+    departmentId?: number; // ID департамента (новый формат)
 }
 
 export async function updateUser(id: number, data: UpdateUserData) {
-  const { name, email, password, role, department } = data;
+  const { name, email, password, role, departmentId, department } = data;
 
   const updateData: any = {};
 
@@ -91,8 +104,12 @@ export async function updateUser(id: number, data: UpdateUserData) {
     updateData.roleId = roleRecord.id;
   }
 
-  // Если передан департамент, находим его ID
-  if (department) {
+  // Если передан департамент, находим его ID (поддерживаем оба формата)
+  if (departmentId) {
+    const departmentRecord = await prisma.department.findUnique({ where: { id: departmentId } });
+    if (!departmentRecord) throw new Error(`Department with ID "${departmentId}" not found.`);
+    updateData.departmentId = departmentId;
+  } else if (department) {
     const departmentRecord = await prisma.department.findFirst({ where: { name: department } });
     if (!departmentRecord) throw new Error(`Department with name "${department}" not found.`);
     updateData.departmentId = departmentRecord.id;

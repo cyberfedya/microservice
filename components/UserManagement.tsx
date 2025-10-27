@@ -5,9 +5,10 @@ import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../constants';
 import { Navigate } from 'react-router-dom';
 import { PlusIcon, PencilIcon, TrashIcon } from './icons/IconComponents';
+import DepartmentTreeSelector from './DepartmentTreeSelector';
 
 // Оставляем emptyForm как изначальное пустое состояние
-const initialEmptyForm = { name: '', email: '', password: '', role: '', department: '' };
+const initialEmptyForm = { name: '', email: '', password: '', role: '', departmentId: null as number | null };
 
 const UserManagement: React.FC = () => {
     const { user } = useAuth();
@@ -45,14 +46,14 @@ const UserManagement: React.FC = () => {
             // ИЛИ если formData сейчас содержит initialEmptyForm (т.е. модалка была закрыта)
             if (formData === initialEmptyForm) {
                  const defaultRoleName = roleData.length > 0 ? roleData[0].name : '';
-                 const defaultDeptName = deptData.length > 0 ? deptData[0].name : '';
+                 const defaultDeptId = deptData.length > 0 ? deptData[0].id : null;
                  // Устанавливаем дефолты для следующего открытия модалки "Add New"
                  setFormData((prev: any) => ({
                      ...initialEmptyForm, // Сбрасываем все поля
                      role: defaultRoleName, // Устанавливаем дефолтную роль
-                     department: defaultDeptName, // Устанавливаем дефолтный департамент
+                     departmentId: defaultDeptId, // Устанавливаем дефолтный департамент ID
                  }));
-                 console.log(`Set default role: ${defaultRoleName}, default dept: ${defaultDeptName}`);
+                 console.log(`Set default role: ${defaultRoleName}, default dept ID: ${defaultDeptId}`);
             }
 
         } catch (err: any) {
@@ -76,26 +77,28 @@ const UserManagement: React.FC = () => {
         if (userToEdit) {
             // При редактировании устанавливаем текущие значения пользователя
             const roleName = typeof userToEdit.role === 'object' ? userToEdit.role.name : userToEdit.role;
-            const departmentName = typeof userToEdit.department === 'object' ? userToEdit.department.name : userToEdit.department;
+            const deptId = userToEdit.departmentId || (typeof userToEdit.department === 'object' ? userToEdit.department.id : null);
             setFormData({
                 name: userToEdit.name || '',
                 email: userToEdit.email,
                 password: '', // Пароль всегда пустой при редактировании
                 role: roleName,
-                department: departmentName
+                departmentId: deptId
             });
-            console.log("Opening modal for EDIT:", { role: roleName, department: departmentName });
+            console.log("Opening modal for EDIT:", { role: roleName, departmentId: deptId });
         } else {
-            // При добавлении НОВОГО пользователя, используем текущие значения formData,
-            // которые ДОЛЖНЫ были установиться с дефолтами в fetchData
-             console.log("Opening modal for ADD with current formData:", formData);
-             // Убедимся, что дефолты точно установлены, если вдруг formData не обновился
+            // При добавлении НОВОГО пользователя
              const defaultRoleName = roles.length > 0 ? roles[0].name : '';
-             const defaultDeptName = departments.length > 0 ? departments[0].name : '';
+             const defaultDeptId = departments.length > 0 ? departments[0].id : null;
+             
+             console.log("Opening modal for ADD. Default dept ID:", defaultDeptId);
+             
              setFormData({
-                 ...initialEmptyForm, // Сбрасываем все, кроме роли и департамента
-                 role: formData.role || defaultRoleName, // Используем текущее значение или дефолт
-                 department: formData.department || defaultDeptName // Используем текущее значение или дефолт
+                 name: '',
+                 email: '',
+                 password: '',
+                 role: defaultRoleName,
+                 departmentId: defaultDeptId
              });
         }
         setIsModalOpen(true);
@@ -107,11 +110,11 @@ const UserManagement: React.FC = () => {
         setEditingUser(null);
         // Сбрасываем formData к состоянию с дефолтами после закрытия
         const defaultRoleName = roles.length > 0 ? roles[0].name : '';
-        const defaultDeptName = departments.length > 0 ? departments[0].name : '';
+        const defaultDeptId = departments.length > 0 ? departments[0].id : null;
         setFormData({
              ...initialEmptyForm,
              role: defaultRoleName,
-             department: defaultDeptName
+             departmentId: defaultDeptId
         });
         setError(''); // Сбрасываем ошибку при закрытии
     };
@@ -125,6 +128,14 @@ const UserManagement: React.FC = () => {
         e.preventDefault();
         setLoading(true); // Показываем загрузку на кнопке
         setError('');
+        
+        // Валидация обязательных полей
+        if (!formData.name || !formData.email || !formData.role || !formData.departmentId) {
+            setError('Iltimos, barcha maydonlarni to\'ldiring');
+            setLoading(false);
+            return;
+        }
+        
         const dataToSend = { ...formData };
 
         try {
@@ -216,7 +227,7 @@ const UserManagement: React.FC = () => {
                                         <td className="px-6 py-4 font-medium text-white">{u.name || '-'}</td>
                                         <td className="px-6 py-4">{u.email}</td>
                                         <td className="px-6 py-4">{u.role?.name || '-'}</td>
-                                        <td className="px-6 py-4">{u.department?.name || '-'}</td>
+                                        <td className="px-6 py-4">{u.departmentName || u.department?.name || '-'}</td>
                                         <td className="px-6 py-4 space-x-2 text-center">
                                             <button onClick={() => handleOpenModal(u)} className="p-2 text-cyan-300 rounded-full hover:bg-cyan-500/30 transition-colors" aria-label="Edit user"><PencilIcon className="w-5 h-5"/></button>
                                             <button
@@ -266,12 +277,12 @@ const UserManagement: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="department" className="block mb-1 text-sm font-medium text-white/80">Department</label>
-                                    <select name="department" id="department" value={formData.department} onChange={handleChange} required className="w-full p-2 bg-white/10 border border-white/20 rounded-md text-white">
-                                         {/* Добавляем опцию по умолчанию, если список пуст */}
-                                        {departments.length === 0 && <option value="" disabled className="text-black">Loading...</option>}
-                                        {departments.map(dept => <option key={dept.id} value={dept.name} className="text-black bg-white">{dept.name}</option>)}
-                                    </select>
+                                    <label className="block mb-1 text-sm font-medium text-white/80">Department</label>
+                                    <DepartmentTreeSelector
+                                        departments={departments}
+                                        selectedDepartmentId={formData.departmentId}
+                                        onSelect={(deptId) => setFormData((prev: any) => ({ ...prev, departmentId: deptId }))}
+                                    />
                                 </div>
                                 {/* Показываем ошибку внутри модального окна */}
                                 {error && isModalOpen && <p className="text-sm text-red-300">{error}</p>}

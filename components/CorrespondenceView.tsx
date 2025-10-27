@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Correspondence } from '../types';
+import { Correspondence, Department } from '../types';
+import { getDepartments } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useCorrespondence } from '../hooks/useCorrespondence';
 import { useCorrespondenceActions } from '../hooks/useCorrespondenceActions';
@@ -13,6 +14,7 @@ import AIAssistant from './AIAssistant';
 import DocumentActions from './DocumentActions';
 import ExecutorsModal from './ExecutorsModal';
 import AuditTrail from './AuditTrail';
+import SendDocumentModal from './SendDocumentModal';
 
 // Вспомогательный компонент для отображения статуса
 const StatusBadge: React.FC<{ status?: 'PENDING' | 'APPROVED' | 'REJECTED' }> = ({ status }) => {
@@ -29,6 +31,8 @@ const CorrespondenceView: React.FC = () => {
     const { correspondence, setCorrespondence, users, loading, error, refetch } = useCorrespondence(id);
 
     const [isExecutorsModalOpen, setIsExecutorsModalOpen] = useState(false);
+    const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+    const [departments, setDepartments] = useState<Department[]>([]);
 
     const handleActionComplete = (updatedDoc?: Correspondence) => {
         if (updatedDoc && updatedDoc.id) {
@@ -47,12 +51,22 @@ const CorrespondenceView: React.FC = () => {
         return () => window.removeEventListener('openExecutorsModal' as any, openModalHandler);
     }, [correspondence]);
 
+    useEffect(() => {
+        // Load departments for send modal
+        getDepartments().then(setDepartments).catch(console.error);
+    }, []);
+
     const handleOpenExecutorsModal = () => {
         setIsExecutorsModalOpen(true);
     };
 
     const handleUpdateExecutors = (payload: { mainExecutorId: number, coExecutorIds: number[], contributorIds: number[] }) => {
         updateExecutors(payload).finally(() => setIsExecutorsModalOpen(false));
+    };
+
+    const handleSendDocument = async (departmentId: number, userId: number) => {
+        // Отправляем документ выбранному пользователю
+        await updateExecutors({ mainExecutorId: userId, coExecutorIds: [], contributorIds: [] });
     };
 
     if (loading) return <div className="text-center p-10">Hujjat yuklanmoqda...</div>;
@@ -124,6 +138,20 @@ const CorrespondenceView: React.FC = () => {
 
                         <AuditTrail log={correspondence.auditLogs} />
                         
+                        {/* Кнопка отправки документа */}
+                        <div className="p-4 border border-white/20 rounded-lg bg-black/20">
+                            <button
+                                onClick={() => setIsSendModalOpen(true)}
+                                disabled={isActionLoading}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 disabled:opacity-50 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                                Hujjatni yuborish
+                            </button>
+                        </div>
+                        
                         <DocumentActions
                             correspondence={correspondence}
                             currentUser={currentUser}
@@ -145,6 +173,15 @@ const CorrespondenceView: React.FC = () => {
                     coExecutorIds: correspondence.coExecutors?.map(u => u.user.id) || [],
                     contributorIds: correspondence.contributors?.map(u => u.user.id) || [],
                 }}
+            />
+            
+            <SendDocumentModal
+                isOpen={isSendModalOpen}
+                onClose={() => setIsSendModalOpen(false)}
+                onSend={handleSendDocument}
+                departments={departments}
+                users={users}
+                isLoading={isActionLoading}
             />
         </>
     );

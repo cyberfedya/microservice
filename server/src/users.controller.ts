@@ -12,8 +12,11 @@ export async function getUsers(req: Request, res: Response, next: NextFunction) 
 
 export async function createUser(req: Request, res: Response, next: NextFunction) {
     try {
-        const { name, email, password, role, department } = req.body;
-        if (!name || !email || !password || !role || !department) return res.status(400).json({ error: "All fields are required" });
+        const { name, email, password, role, department, departmentId } = req.body;
+        // Проверяем наличие обязательных полей. Департамент может быть передан либо как ID, либо как имя
+        if (!name || !email || !password || !role || (!department && !departmentId)) {
+            return res.status(400).json({ error: "All fields are required" });
+        }
         const newUser = await UserService.createUser(req.body);
         res.status(201).json(newUser);
     } catch (e: any) {

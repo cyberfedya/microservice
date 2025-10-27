@@ -29,7 +29,14 @@ export const useFilteredDocuments = (documents: Correspondence[], user: User | n
       })
       .filter(c => c.type === filters.activeTab)
       .filter(c => filters.activeKartoteka === 'Barchasi' || c.kartoteka === filters.activeKartoteka)
-      .filter(c => filters.activeStage === 'Barchasi' || c.stage === filters.activeStage)
+      .filter(c => {
+        if (filters.activeStage === 'Barchasi') return true;
+        // Специальная логика для "Rad etilgan" - показываем документы с отклоненными согласованиями
+        if (filters.activeStage === 'REJECTED') {
+          return c.reviewers?.some(rev => rev.status === 'REJECTED') || c.stage === 'REVISION_REQUESTED';
+        }
+        return c.stage === filters.activeStage;
+      })
       .filter(c => filters.activeDepartment === 'Barchasi' || (c.mainExecutor?.department?.name || 'Tayinlanmagan') === filters.activeDepartment)
       .filter(c => {
         if (filters.activeStatus === 'Barchasi') return true;
