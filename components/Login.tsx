@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-// MOCK_USERS больше не нужен для быстрого входа, так как пароли неизвестны
-// Вместо этого мы можем оставить кнопки, но они будут подставлять email, а пароль нужно будет ввести
-import { MOCK_USERS } from '../services/mockApi'; 
 import { DocumentIcon } from './icons/IconComponents';
-import { UserRole } from '../constants';
+
+// Список пользователей для быстрого входа
+const QUICK_LOGIN_USERS = [
+  { email: 'admin@agrobank.uz', role: 'Admin', password: 'admin_pass_2025' },
+  { email: 'apparat@agrobank.uz', role: 'Bank apparati', password: 'apparat_pass_2025' },
+  { email: 'board@agrobank.uz', role: 'Boshqaruv', password: 'board_pass_2025' },
+  { email: 'assistant@agrobank.uz', role: 'Yordamchi', password: 'assistant_pass_2025' },
+  { email: 'credit.head@agrobank.uz', role: 'Tarmoq', password: 'credit_head_pass_2025' },
+  { email: 'reception@agrobank.uz', role: 'Resepshn', password: 'reception_pass_2025' },
+  { email: 'council.secretary@agrobank.uz', role: 'Bank Kengashi kotibi', password: 'council_pass_2025' },
+  { email: 'compliance.head@agrobank.uz', role: 'Komplaens', password: 'compliance_pass_2025' },
+];
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -21,8 +29,8 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
-      // --- ИЗМЕНЕНО: Передаем email и пароль ---
-      await login(email, password);
+      // --- ИЗМЕНЕНО: Передаем email и пароль с удалением пробелов ---
+      await login(email.trim(), password.trim());
       navigate('/dashboard');
     } catch (err: any) {
       // Улучшаем сообщение об ошибке
@@ -32,20 +40,11 @@ const Login: React.FC = () => {
     }
   };
 
-  // Функция быстрого входа теперь просто подставляет email
-  const quickSetEmail = (userEmail: string) => {
-    setEmail(userEmail);
+  // Функция быстрого входа подставляет email и пароль
+  const quickLogin = (userEmail: string, userPassword: string) => {
+    setEmail(userEmail.trim());
+    setPassword(userPassword.trim());
   };
-
-  const quickLoginUsers = [
-      MOCK_USERS.find(u => u.role.name === UserRole.Admin),
-      MOCK_USERS.find(u => u.role.name === UserRole.BankApparati),
-      MOCK_USERS.find(u => u.role.name === UserRole.Boshqaruv),
-      MOCK_USERS.find(u => u.role.name === UserRole.Yordamchi),
-      MOCK_USERS.find(u => u.role.name === UserRole.Tarmoq),
-      MOCK_USERS.find(u => u.role.name === UserRole.Resepshn),
-      MOCK_USERS.find(u => u.role.name === UserRole.BankKengashiKotibi),
-  ].filter(Boolean) as any[];
 
 
   return (
@@ -109,11 +108,15 @@ const Login: React.FC = () => {
         </form>
 
         <div className="pt-4 mt-4 border-t border-white/20">
-            <p className="text-sm text-center text-white/70">Yoki tezkor kirish (email tanlang):</p>
+            <p className="text-sm text-center text-white/70">Yoki tezkor kirish:</p>
             <div className="grid grid-cols-2 gap-3 mt-4">
-                {quickLoginUsers.map(user => (
-                    <button key={user.id} onClick={() => quickSetEmail(user.email)} className="px-4 py-2 text-sm text-white rounded-md bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
-                        {user.role.name}
+                {QUICK_LOGIN_USERS.map((user, index) => (
+                    <button 
+                      key={index} 
+                      onClick={() => quickLogin(user.email, user.password)} 
+                      className="px-4 py-2 text-sm text-white rounded-md bg-white/10 hover:bg-white/20 border border-white/20 transition-colors"
+                    >
+                        {user.role}
                     </button>
                 ))}
             </div>

@@ -329,4 +329,20 @@ export async function assignInternalEmployee(documentId: number, internalAssigne
     return handleResponse(res);
 }
 
+export async function archiveDocument(documentId: number) {
+    const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/archive`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+    });
+    return handleResponse(res);
+}
+
+export async function unarchiveDocument(documentId: number) {
+    const res = await fetch(`${API_BASE}/api/correspondences/${documentId}/unarchive`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+    });
+    return handleResponse(res);
+}
+
 // --- END: НОВЫЕ/ИСПРАВЛЕННЫЕ ФУНКЦИИ ---

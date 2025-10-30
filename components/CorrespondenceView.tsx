@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Correspondence, Department } from '../types';
-import { getDepartments } from '../services/api';
+import { getDepartments, archiveDocument, unarchiveDocument } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useCorrespondence } from '../hooks/useCorrespondence';
 import { useCorrespondenceActions } from '../hooks/useCorrespondenceActions';
@@ -33,6 +33,8 @@ const CorrespondenceView: React.FC = () => {
     const [isExecutorsModalOpen, setIsExecutorsModalOpen] = useState(false);
     const [isSendModalOpen, setIsSendModalOpen] = useState(false);
     const [departments, setDepartments] = useState<Department[]>([]);
+    const [showAdvancedActions, setShowAdvancedActions] = useState(false);
+    const [isArchiving, setIsArchiving] = useState(false);
 
     const handleActionComplete = (updatedDoc?: Correspondence) => {
         if (updatedDoc && updatedDoc.id) {
@@ -43,6 +45,40 @@ const CorrespondenceView: React.FC = () => {
     };
 
     const { isActionLoading, updateExecutors } = useCorrespondenceActions(correspondence, handleActionComplete);
+
+    const handleArchive = async () => {
+        if (!correspondence?.id) return;
+        
+        if (!confirm('Вы уверены, что хотите архивировать этот документ?')) return;
+        
+        setIsArchiving(true);
+        try {
+            await archiveDocument(correspondence.id);
+            alert('Документ успешно архивирован!');
+            refetch();
+        } catch (error: any) {
+            alert(`Ошибка при архивировании: ${error.message}`);
+        } finally {
+            setIsArchiving(false);
+        }
+    };
+
+    const handleUnarchive = async () => {
+        if (!correspondence?.id) return;
+        
+        if (!confirm('Вы уверены, что хотите извлечь этот документ из архива?')) return;
+        
+        setIsArchiving(true);
+        try {
+            await unarchiveDocument(correspondence.id);
+            alert('Документ успешно извлечен из архива!');
+            refetch();
+        } catch (error: any) {
+            alert(`Ошибка при извлечении: ${error.message}`);
+        } finally {
+            setIsArchiving(false);
+        }
+    };
 
     useEffect(() => {
         // Listen for custom event to open modal
@@ -83,51 +119,97 @@ const CorrespondenceView: React.FC = () => {
             </button>
 
             <div className="p-6 rounded-2xl shadow-lg bg-white/5 border border-white/10 text-white">
-                <div className="grid grid-cols-1 gap-8 mt-6 lg:grid-cols-3">
-                    <div className="lg:col-span-2">
-                        <h1 className="text-3xl font-bold">{correspondence.title}</h1>
-                        <p className="text-white/70">Manba: {correspondence.source || 'Noma\'lum'}</p>
-                        <h2 className="mt-6 mb-4 text-xl font-semibold">Hujjat matni</h2>
-                        <DocumentEditorPreview content={correspondence.content || ''} />
+                <div className="flex gap-6 mt-6">
+                    {/* Левая колонка - Оригинальный документ */}
+                    <div className="w-1/2 flex-shrink-0">
+                        <div className="p-4 border border-white/20 rounded-lg bg-black/20 h-full">
+                            <h2 className="text-lg font-semibold mb-3">Original Hujjat</h2>
+                            <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+                                <DocumentEditorPreview content={correspondence.content || ''} />
+                            </div>
+                        </div>
                     </div>
-                    <div className="space-y-6">
+
+                    {/* Правая колонка */}
+                    <div className="flex-1 flex flex-col gap-6">
+                        {/* Заголовок и информация */}
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h1 className="text-3xl font-bold">{correspondence.title}</h1>
+                                <p className="text-white/70 mt-1">Manba: {correspondence.source || 'Noma\'lum'}</p>
+                            </div>
+                            
+                            {/* Кнопка Arxivlash */}
+                            {correspondence.stage !== 'ARCHIVED' && (
+                                <button
+                                    onClick={handleArchive}
+                                    disabled={isArchiving}
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                    </svg>
+                                    {isArchiving ? 'Arxivlanmoqda...' : 'Arxivlash'}
+                                </button>
+                            )}
+                            
+                            {/* Кнопка Arxivdan chiqarish */}
+                            {correspondence.stage === 'ARCHIVED' && (
+                                <button
+                                    onClick={handleUnarchive}
+                                    disabled={isArchiving}
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg transition text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                    </svg>
+                                    {isArchiving ? 'Chiqarilmoqda...' : 'Arxivdan chiqarish'}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* AI Ассистент - большой блок наверху */}
                         <AIAssistant 
                             content={correspondence.content || ''}
                             title={correspondence.title}
                             source={correspondence.source || ''}
                         />
-                        <div className="p-4 border border-white/20 rounded-lg bg-black/20">
-                            <h3 className="text-lg font-semibold mb-4">Ma'lumotlar</h3>
-                            <div className="space-y-4 text-sm">
-                                <div className="pb-3 border-b border-white/10">
-                                    <p className="text-xs uppercase text-white/50 tracking-wider">Joriy Bosqich</p>
-                                    <p className="font-medium text-white/90">{getStageDisplayName(correspondence.stage)}</p>
-                                </div>
-                                <div className="pb-3 border-b border-white/10">
-                                    <p className="text-xs uppercase text-white/50 tracking-wider">Yaratildi</p>
-                                    <p className="font-medium text-white/90">{new Date(correspondence.createdAt).toLocaleString()}</p>
-                                </div>
-                                <div className="pb-3 border-b border-white/10">
-                                    <p className="text-xs uppercase text-white/50 tracking-wider">Muallif</p>
-                                    <p className="font-medium text-white/90">{correspondence.author?.name || 'Noma\'lum'}</p>
-                                </div>
-                                <div className="pb-3 border-b border-white/10">
-                                    <p className="text-xs uppercase text-white/50 tracking-wider">Asosiy Ijrochi</p>
-                                    <p className="font-medium text-white/90">{correspondence.mainExecutor?.name || 'Tayinlanmagan'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs uppercase text-white/50 tracking-wider">Ichki Ijrochi</p>
-                                    <p className="font-medium text-white/90">{correspondence.internalAssignee?.name || 'Tayinlanmagan'}</p>
-                                </div>
+
+                        {/* Верхний ряд - компактные поля */}
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="p-3 border border-white/20 rounded-lg bg-black/20">
+                                <p className="text-xs uppercase text-white/50 tracking-wider mb-1">Joriy Bosqich</p>
+                                <p className="text-sm font-medium text-white/90">{getStageDisplayName(correspondence.stage)}</p>
+                            </div>
+                            <div className="p-3 border border-white/20 rounded-lg bg-black/20">
+                                <p className="text-xs uppercase text-white/50 tracking-wider mb-1">Yaratildi</p>
+                                <p className="text-sm font-medium text-white/90">{new Date(correspondence.createdAt).toLocaleDateString()}</p>
+                            </div>
+                            <div className="p-3 border border-white/20 rounded-lg bg-black/20">
+                                <p className="text-xs uppercase text-white/50 tracking-wider mb-1">Muallif</p>
+                                <p className="text-sm font-medium text-white/90">{correspondence.author?.name || 'Noma\'lum'}</p>
                             </div>
                         </div>
-                        
+
+                        {/* Второй ряд - исполнители */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 border border-white/20 rounded-lg bg-black/20">
+                                <p className="text-xs uppercase text-white/50 tracking-wider mb-1">Asosiy Ijrochi</p>
+                                <p className="text-sm font-medium text-white/90">{correspondence.mainExecutor?.name || 'Tayinlanmagan'}</p>
+                            </div>
+                            <div className="p-3 border border-white/20 rounded-lg bg-black/20">
+                                <p className="text-xs uppercase text-white/50 tracking-wider mb-1">Ichki Ijrochi</p>
+                                <p className="text-sm font-medium text-white/90">{correspondence.internalAssignee?.name || 'Tayinlanmagan'}</p>
+                            </div>
+                        </div>
+
+                        {/* Согласователи */}
                         {correspondence.reviewers && correspondence.reviewers.length > 0 && (
-                            <div className="p-4 border border-white/20 rounded-lg bg-black/20">
-                                <h3 className="text-lg font-semibold">Kelishuvchilar</h3>
-                                <ul className="mt-3 space-y-3">
+                            <div className="p-3 border border-white/20 rounded-lg bg-black/20">
+                                <h3 className="text-sm font-semibold mb-2">Kelishuvchilar</h3>
+                                <ul className="space-y-2">
                                     {correspondence.reviewers.map(reviewer => (
-                                        <li key={reviewer.user.id} className="flex justify-between items-center text-sm">
+                                        <li key={reviewer.user.id} className="flex justify-between items-center text-xs">
                                             <span className="text-white/80">{reviewer.user.name}</span>
                                             <StatusBadge status={reviewer.status} />
                                         </li>
@@ -136,27 +218,18 @@ const CorrespondenceView: React.FC = () => {
                             </div>
                         )}
 
+                        {/* Audit Trail */}
                         <AuditTrail log={correspondence.auditLogs} />
-                        
-                        {/* Кнопка отправки документа */}
-                        <div className="p-4 border border-white/20 rounded-lg bg-black/20">
-                            <button
-                                onClick={() => setIsSendModalOpen(true)}
-                                disabled={isActionLoading}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 disabled:opacity-50 transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                                Hujjatni yuborish
-                            </button>
-                        </div>
-                        
+
+                        {/* Действия с документом */}
                         <DocumentActions
                             correspondence={correspondence}
                             currentUser={currentUser}
                             users={users}
                             onUpdate={handleActionComplete}
+                            showAdvancedActions={showAdvancedActions}
+                            setShowAdvancedActions={setShowAdvancedActions}
+                            onOpenSendModal={() => setIsSendModalOpen(true)}
                         />
                     </div>
                 </div>

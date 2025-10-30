@@ -1,5 +1,8 @@
 // docmanageapp/client/src/constants.ts
 
+// API Base URL
+export const API_BASE_URL = 'http://localhost:5000/api';
+
 // Системные имена для логики
 export enum UserRole {
   BankApparati = 'Bank apparati',

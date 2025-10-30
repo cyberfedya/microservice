@@ -10,8 +10,8 @@ import DocumentCard from './DocumentCard';
 import StatusDistributionChart from './StatusDistributionChart';
 import DocsPerDeptChart from './charts/DocsPerDeptChart';
 import DashboardSkeleton from './DashboardSkeleton';
-import DocumentPreviewModal from './DocumentPreviewModal';
 import CreateCorrespondenceModal from './CreateCorrespondenceModal';
+import DisciplineWidget from './DisciplineWidget';
 import { PlusIcon, SearchIcon, ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon } from './icons/IconComponents';
 
 const KARTOTEKA_ITEMS = [
@@ -51,7 +51,6 @@ const Devonxona: React.FC = () => {
     const [filters, dispatch] = useReducer(filterReducer, initialFilterState);
 
     const [isCreateModalOpen, setCreateModalOpen] = useState(false);
-    const [quickViewDoc, setQuickViewDoc] = useState<Correspondence | null>(null);
 
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 9;
@@ -125,7 +124,7 @@ const Devonxona: React.FC = () => {
     };
 
     const handleCardClick = (document: Correspondence) => {
-        setQuickViewDoc(document);
+        navigate(`/correspondence/${document.id}`);
     };
 
     if (!user) return null;
@@ -203,6 +202,11 @@ const Devonxona: React.FC = () => {
 
                 <div className="flex-grow flex gap-8 mt-4 overflow-hidden">
                     <aside className="w-60 flex-shrink-0 pr-4 border-r border-white/10 overflow-y-auto">
+                        {/* Виджет мониторинга дисциплины - ВРЕМЕННО ДЛЯ ВСЕХ */}
+                        <div className="mb-6">
+                            <DisciplineWidget />
+                        </div>
+
                         <h2 className="text-sm font-semibold uppercase text-white/50 mb-4">Hujjat turi</h2>
                         <ul className="space-y-2 mb-8">
                             <li><button onClick={() => dispatch({ type: 'SET_FILTER', payload: { name: 'activeTab', value: 'Kiruvchi' } })} className={`w-full text-left px-4 py-2.5 rounded-lg transition-colors text-base font-medium ${filters.activeTab === 'Kiruvchi' ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/10'}`}>Kiruvchi</button></li>
@@ -263,9 +267,9 @@ const Devonxona: React.FC = () => {
                                     </div>
 
                                     {/* ПОТОМ КРУГОВАЯ ДИАГРАММА (СПРАВА) */}
-                                    <div className="lg:w-1/3">
-                                        <h2 className="text-xl font-bold mb-4">Hujjatlar Holati</h2>
-                                        <div className="h-64 bg-black/10 border border-white/10 rounded-xl p-4">
+                                    <div className="lg:w-1/3 flex flex-col">
+                                        <h2 className="text-xl font-bold mb-4 text-white">Hujjatlar Holati</h2>
+                                        <div className="flex-1 min-h-[350px]">
                                             <StatusDistributionChart
                                                 data={chartData}
                                                 onSliceClick={handleStatusFilterClick}
@@ -284,16 +288,6 @@ const Devonxona: React.FC = () => {
                 <CreateCorrespondenceModal
                     onClose={() => setCreateModalOpen(false)}
                     onSuccess={fetchData}
-                />
-            )}
-            {quickViewDoc && (
-                <DocumentPreviewModal
-                    document={quickViewDoc}
-                    onClose={() => setQuickViewDoc(null)}
-                    onViewFull={() => {
-                        navigate(`/correspondence/${quickViewDoc.id}`);
-                        setQuickViewDoc(null);
-                    }}
                 />
             )}
         </>

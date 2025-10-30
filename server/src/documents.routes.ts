@@ -20,10 +20,12 @@ export function registerDocumentRoutes(app: Express) {
     router.post('/:id/dispatch', controller.dispatchDocument);
     router.post('/:id/hold', controller.holdCorrespondence);
     router.post('/:id/cancel', controller.cancelCorrespondence);
+    router.post('/:id/archive', controller.archiveDocument);
+    router.post('/:id/unarchive', controller.unarchiveDocument);
 
     // Document Management
     router.put('/:id/executors', controller.updateExecutors);
-    router.put('/:id/deadline', controller.updateDeadline); // <-- Ошибка может указывать сюда, если предыдущие были неверны
+    router.put('/:id/deadline', controller.updateDeadline);
 
     app.use('/api/correspondences', router);
 }

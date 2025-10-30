@@ -518,3 +518,25 @@ export async function assignInternalEmployee(documentId: number, internalAssigne
 
      return updatedDoc;
 }
+
+export async function archiveDocument(documentId: number, userId: number) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true }});
+    const updatedDocument = await prisma.document.update({
+        where: { id: documentId },
+        data: { stage: DocumentStage.ARCHIVED },
+        include: documentInclude,
+    });
+    await createAuditLog(documentId, `Hujjat arxivlandi`, userId, `Kim tomonidan: ${user?.name}`);
+    return updatedDocument;
+}
+
+export async function unarchiveDocument(documentId: number, userId: number) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true }});
+    const updatedDocument = await prisma.document.update({
+        where: { id: documentId },
+        data: { stage: DocumentStage.PENDING_REGISTRATION }, // Возвращаем в начальный статус
+        include: documentInclude,
+    });
+    await createAuditLog(documentId, `Hujjat arxivdan chiqarildi`, userId, `Kim tomonidan: ${user?.name}`);
+    return updatedDocument;
+}

@@ -168,3 +168,25 @@ export async function cancelCorrespondence(req: Request, res: Response, next: Ne
         next(e);
     }
 }
+
+export async function archiveDocument(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).user.id;
+        const updatedDocument = await DocumentService.archiveDocument(Number(req.params.id), userId);
+        res.json(updatedDocument);
+    } catch (e) {
+        console.error("Error in archiveDocument controller:", e);
+        next(e);
+    }
+}
+
+export async function unarchiveDocument(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).user.id;
+        const updatedDocument = await DocumentService.unarchiveDocument(Number(req.params.id), userId);
+        res.json(updatedDocument);
+    } catch (e) {
+        console.error("Error in unarchiveDocument controller:", e);
+        next(e);
+    }
+}

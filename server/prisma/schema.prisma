@@ -67,8 +67,11 @@ model Department {
   parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children Department[] @relation("DepartmentHierarchy")
 
-  // --- ИЗМЕНЕНО ---
-  // Имя должно быть уникальным только в пределах одного родителя
+  // Hisobot tizimi
+  reports             Report[]             @relation("DepartmentReports")
+  disciplineReports   DisciplineReport[]   @relation("DisciplineDeptReports")
+
+  @@index([parentId])
   @@unique([name, parentId])
 }
 
@@ -82,7 +85,7 @@ model User {
   departmentId Int
   department   Department @relation(fields: [departmentId], references: [id])
   managerId    Int?
-  manager      User?    @relation("UserManagedBy", fields: [managerId], references: [id], onDelete: SetNull) // onDelete: SetNull
+  manager      User?    @relation("UserManagedBy", fields: [managerId], references: [id], onDelete: SetNull)
   reports      User[]   @relation("UserManagedBy")
 
   // Relations
@@ -95,6 +98,38 @@ model User {
   contributedDocs      DocumentContributor[]
   auditLogs            AuditLog[]
   notifications        Notification[]
+  
+  // Новые связи
+  createdMeetings      Meeting[]              @relation("MeetingCreator")
+  meetingAttendances   MeetingAttendee[]      @relation("MeetingParticipant")
+  agendaPresentations  MeetingAgenda[]        @relation("AgendaPresenter")
+  receptionSchedules   ReceptionSchedule[]    @relation("ReceptionReceiver")
+  kpiMetrics           KPIMetric[]            @relation("UserKPI")
+  
+  // Kollegial organlar
+  chairmanOfBodies     CollegialBody[]        @relation("CollegialChairman")
+  secretaryOfBodies    CollegialBody[]        @relation("CollegialSecretary")
+  collegialMemberships CollegialMember[]      @relation("CollegialMemberUser")
+  collegialMeetingsCreated CollegialMeeting[] @relation("CollegialMeetingCreator")
+  collegialAgendaPresentations CollegialAgenda[] @relation("CollegialAgendaPresenter")
+  collegialAttendances CollegialAttendee[]    @relation("CollegialAttendeeUser")
+  
+  // Arxiv tizimi
+  chairmanOfCommissions ExpertCommission[]    @relation("CommissionChairman")
+  secretaryOfCommissions ExpertCommission[]   @relation("CommissionSecretary")
+  commissionMemberships CommissionMember[]    @relation("CommissionMemberUser")
+  expertiseDecisions    DocumentExpertise[]   @relation("ExpertiseDecider")
+  archivesCreated       ArchiveStorage[]      @relation("ArchiveCreator")
+  archivesRetrieved     ArchiveStorage[]      @relation("ArchiveRetriever")
+  archiveMovements      ArchiveMovement[]     @relation("ArchiveMover")
+  archiveRequests       ArchiveRequest[]      @relation("ArchiveRequester")
+  archiveApprovals      ArchiveRequest[]      @relation("ArchiveApprover")
+  
+  // Hisobot tizimi
+  reportsCreated        Report[]              @relation("ReportCreator")
+  reportsApproved       Report[]              @relation("ReportApprover")
+  disciplineReports     DisciplineReport[]    @relation("DisciplineReportCreator")
+  docFlowReports        DocumentFlowReport[]  @relation("DocFlowReportCreator")
 }
 
 model Document {
@@ -125,6 +160,10 @@ model Document {
   contributors       DocumentContributor[]
   auditLogs          AuditLog[]
   aiSuggestion       AISuggestion? // Один-к-одному, поэтому без []
+  
+  // Arxiv
+  expertise          DocumentExpertise[]   @relation("DocumentExpertise")
+  archiveStorage     ArchiveStorage?       @relation("DocumentArchive")
 
   // Indexes
   @@index([authorId])
@@ -222,4 +261,673 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId, isRead])
+}
+
+// ============================================
+// НОВЫЕ МОДЕЛИ: Заседания, Прием граждан, KPI
+// ============================================
+
+// Enums для новых модулей
+enum MeetingType {
+  BOSHQARUV      // Заседание Правления
+  KOLLEGIAL      // Коллегиальный орган
+  KENGASH        // Совет
+  AKSIYADORLAR   // Акционеры
+}
+
+enum MeetingStatus {
+  PLANNED        // Запланировано
+  IN_PROGRESS    // В процессе
+  COMPLETED      // Завершено
+  CANCELLED      // Отменено
+}
+
+enum ReceptionType {
+  SHAXSIY        // Личный прием
+  OMMAVIY        // Массовый прием
+  SAYYOR         // Выездной прием
+  ONLINE         // Онлайн прием
+}
+
+enum AppointmentStatus {
+  SCHEDULED      // Запланировано
+  COMPLETED      // Завершено
+  CANCELLED      // Отменено
+  NO_SHOW        // Не явился
+}
+
+enum CollegialBodyType {
+  KREDIT                    // Кредитный комитет
+  LIKVIDLIK                 // Комитет по управлению ликвидностью
+  LOYIHA                    // Комитет по управлению проектами
+  INVESTITSIYA              // Инвестиционный комитет
+  TARIF                     // Тарифный комитет
+}
+
+enum CollegialMeetingStatus {
+  PLANNED                   // Запланировано
+  IN_PROGRESS               // В процессе
+  COMPLETED                 // Завершено
+  CANCELLED                 // Отменено
+}
+
+enum ArchiveStatus {
+  ACTIVE                    // Активный документ
+  PENDING_EXPERTISE         // Ожидает экспертизы
+  APPROVED_FOR_ARCHIVE      // Одобрен для архива
+  IN_ARCHIVE                // В архиве
+  PERMANENT_STORAGE         // Постоянное хранение
+  DESTROYED                 // Уничтожен
+}
+
+enum DocumentValue {
+  PERMANENT                 // Постоянное хранение
+  TEMPORARY_75_YEARS        // 75 лет
+  TEMPORARY_50_YEARS        // 50 лет
+  TEMPORARY_25_YEARS        // 25 лет
+  TEMPORARY_10_YEARS        // 10 лет
+  TEMPORARY_5_YEARS         // 5 лет
+  TEMPORARY_3_YEARS         // 3 года
+  NO_VALUE                  // Без ценности
+}
+
+enum ReportType {
+  OYLIK                     // Месячный
+  CHORAKLIK                 // Квартальный
+  YILLIK                    // Годовой
+}
+
+enum ReportStatus {
+  DRAFT                     // Черновик
+  SUBMITTED                 // Отправлен
+  APPROVED                  // Утвержден
+  REJECTED                  // Отклонен
+}
+
+// Заседания
+model Meeting {
+  id            Int           @id @default(autoincrement())
+  type          MeetingType
+  title         String
+  scheduledDate DateTime
+  location      String?
+  isOnline      Boolean       @default(false)
+  status        MeetingStatus @default(PLANNED)
+  createdById   Int
+  createdBy     User          @relation("MeetingCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  attendees     MeetingAttendee[]
+  agenda        MeetingAgenda[]
+  decisions     MeetingDecision[]
+  protocol      MeetingProtocol?
+
+  @@index([createdById])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+// Участники заседания
+model MeetingAttendee {
+  id         Int      @id @default(autoincrement())
+  meetingId  Int
+  meeting    Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation("MeetingParticipant", fields: [userId], references: [id], onDelete: Cascade)
+  role       String?  // Роль на заседании (председатель, секретарь и т.д.)
+  isRequired Boolean  @default(true)
+  attended   Boolean  @default(false)
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
+}
+
+// Повестка дня
+model MeetingAgenda {
+  id           Int     @id @default(autoincrement())
+  meetingId    Int
+  meeting      Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  orderNumber  Int
+  topic        String
+  description  String?
+  presenterId  Int?
+  presenter    User?   @relation("AgendaPresenter", fields: [presenterId], references: [id], onDelete: SetNull)
+  duration     Int?    // Длительность в минутах
+
+  @@index([meetingId])
+}
+
+// Решения заседания
+model MeetingDecision {
+  id            Int      @id @default(autoincrement())
+  meetingId     Int
+  meeting       Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  decision      String
+  responsible   String?  // Ответственный
+  deadline      DateTime?
+  votesFor      Int?     // Голосов "за"
+  votesAgainst  Int?     // Голосов "против"
+  votesAbstain  Int?     // Воздержались
+  createdAt     DateTime @default(now())
+
+  @@index([meetingId])
+}
+
+// Протокол заседания
+model MeetingProtocol {
+  id          Int      @id @default(autoincrement())
+  meetingId   Int      @unique
+  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  content     String
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime @default(now())
+}
+
+// График приема граждан
+model ReceptionSchedule {
+  id           Int           @id @default(autoincrement())
+  receiverId   Int
+  receiver     User          @relation("ReceptionReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  type         ReceptionType
+  date         DateTime
+  startTime    String        // Время начала (HH:MM)
+  endTime      String        // Время окончания (HH:MM)
+  location     String
+  maxSlots     Int           @default(10)
+  slotDuration Int           @default(15) // Длительность слота в минутах
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+
+  // Relations
+  appointments ReceptionAppointment[]
+
+  @@index([receiverId])
+  @@index([date])
+}
+
+// Записи на прием
+model ReceptionAppointment {
+  id            Int               @id @default(autoincrement())
+  scheduleId    Int
+  schedule      ReceptionSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  citizenName   String
+  citizenPhone  String
+  citizenEmail  String?
+  citizenAddress String?
+  topic         String
+  description   String?
+  timeSlot      String            // Время слота (HH:MM)
+  status        AppointmentStatus @default(SCHEDULED)
+  notes         String?           // Заметки после приема
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([scheduleId])
+  @@index([citizenPhone])
+}
+
+// KPI показатели
+model KPIMetric {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  user              User     @relation("UserKPI", fields: [userId], references: [id], onDelete: Cascade)
+  period            DateTime // Период (месяц/квартал)
+  documentsCompleted Int     @default(0)
+  documentsOnTime   Int      @default(0)
+  documentsLate     Int      @default(0)
+  meetingsAttended  Int      @default(0)
+  receptionsConducted Int    @default(0)
+  score             Float    @default(0)
+  bonus             Float    @default(0)
+  penalty           Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, period])
+  @@index([userId])
+  @@index([period])
+}
+
+// История этапов обработки документов
+model DocumentStageHistory {
+  id          Int           @id @default(autoincrement())
+  documentId  Int
+  stage       DocumentStage
+  enteredAt   DateTime      @default(now())
+  exitedAt    DateTime?
+  duration    Int?          // Длительность в минутах
+  performedBy Int?
+  notes       String?
+
+  @@index([documentId])
+  @@index([stage])
+}
+
+// ============================================
+// KOLLEGIAL ORGANLAR (Коллегиальные органы)
+// ============================================
+
+// Коллегиальный орган
+model CollegialBody {
+  id              Int                @id @default(autoincrement())
+  type            CollegialBodyType  @unique
+  name            String
+  description     String?
+  chairmanId      Int?
+  chairman        User?              @relation("CollegialChairman", fields: [chairmanId], references: [id], onDelete: SetNull)
+  secretaryId     Int?
+  secretary       User?              @relation("CollegialSecretary", fields: [secretaryId], references: [id], onDelete: SetNull)
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  members         CollegialMember[]
+  meetings        CollegialMeeting[]
+  workPlans       CollegialWorkPlan[]
+
+  @@index([type])
+  @@index([chairmanId])
+  @@index([secretaryId])
+}
+
+// Члены коллегиального органа
+model CollegialMember {
+  id              Int            @id @default(autoincrement())
+  bodyId          Int
+  body            CollegialBody  @relation(fields: [bodyId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User           @relation("CollegialMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  role            String?        // Роль в органе (председатель, секретарь, член)
+  isVotingMember  Boolean        @default(true)
+  joinedAt        DateTime       @default(now())
+  leftAt          DateTime?
+
+  @@unique([bodyId, userId])
+  @@index([bodyId])
+  @@index([userId])
+}
+
+// Заседания коллегиального органа
+model CollegialMeeting {
+  id              Int                     @id @default(autoincrement())
+  bodyId          Int
+  body            CollegialBody           @relation(fields: [bodyId], references: [id], onDelete: Cascade)
+  title           String
+  scheduledDate   DateTime
+  location        String?
+  isOnline        Boolean                 @default(false)
+  status          CollegialMeetingStatus  @default(PLANNED)
+  quorumRequired  Int                     @default(75) // Процент для кворума
+  quorumAchieved  Boolean                 @default(false)
+  createdById     Int
+  createdBy       User                    @relation("CollegialMeetingCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  // Relations
+  agenda          CollegialAgenda[]
+  decisions       CollegialDecision[]
+  attendees       CollegialAttendee[]
+  protocol        CollegialProtocol?
+
+  @@index([bodyId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+// Повестка дня коллегиального органа
+model CollegialAgenda {
+  id              Int               @id @default(autoincrement())
+  meetingId       Int
+  meeting         CollegialMeeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  orderNumber     Int
+  topic           String
+  description     String?
+  presenterId     Int?
+  presenter       User?             @relation("CollegialAgendaPresenter", fields: [presenterId], references: [id], onDelete: SetNull)
+  duration        Int?              // Длительность в минутах
+  documentId      Int?              // Связанный документ
+
+  @@index([meetingId])
+}
+
+// Решения коллегиального органа
+model CollegialDecision {
+  id              Int               @id @default(autoincrement())
+  meetingId       Int
+  meeting         CollegialMeeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  decision        String
+  votesFor        Int               @default(0)
+  votesAgainst    Int               @default(0)
+  votesAbstain    Int               @default(0)
+  responsible     String?
+  deadline        DateTime?
+  createdAt       DateTime          @default(now())
+
+  @@index([meetingId])
+}
+
+// Участники заседания коллегиального органа
+model CollegialAttendee {
+  id              Int               @id @default(autoincrement())
+  meetingId       Int
+  meeting         CollegialMeeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User              @relation("CollegialAttendeeUser", fields: [userId], references: [id], onDelete: Cascade)
+  attended        Boolean           @default(false)
+  vote            String?           // ZA, QARSHI, BETARAF
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
+}
+
+// Протокол заседания коллегиального органа
+model CollegialProtocol {
+  id              Int               @id @default(autoincrement())
+  meetingId       Int               @unique
+  meeting         CollegialMeeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  protocolNumber  String
+  content         String
+  approvedBy      String?
+  approvedAt      DateTime?
+  createdAt       DateTime          @default(now())
+}
+
+// Рабочий план коллегиального органа (yillik, choraklik, oylik)
+model CollegialWorkPlan {
+  id              Int            @id @default(autoincrement())
+  bodyId          Int
+  body            CollegialBody  @relation(fields: [bodyId], references: [id], onDelete: Cascade)
+  year            Int
+  quarter         Int?           // 1, 2, 3, 4 (null для годового)
+  month           Int?           // 1-12 (null для годового/квартального)
+  description     String
+  tasks           String         // JSON массив задач
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([bodyId, year, quarter, month])
+  @@index([bodyId])
+  @@index([year])
+}
+
+// Отчетность коллегиального органа (oylik, choraklik, yillik)
+model CollegialReport {
+  id              Int            @id @default(autoincrement())
+  bodyId          Int
+  year            Int
+  quarter         Int?           // 1, 2, 3, 4 (null для годового)
+  month           Int?           // 1-12 (null для годового/квартального)
+  reportType      String         // OYLIK, CHORAKLIK, YILLIK
+  content         String
+  meetingsHeld    Int            @default(0)
+  decisionsTotal  Int            @default(0)
+  tasksCompleted  Int            @default(0)
+  submittedAt     DateTime       @default(now())
+  submittedBy     Int
+  createdAt       DateTime       @default(now())
+
+  @@index([bodyId])
+  @@index([year])
+  @@index([reportType])
+}
+
+// ============================================
+// ARXIV TIZIMI (Архивная система)
+// ============================================
+
+// Markaziy ekspert komissiyasi (Центральная экспертная комиссия)
+model ExpertCommission {
+  id              Int            @id @default(autoincrement())
+  name            String
+  chairmanId      Int
+  chairman        User           @relation("CommissionChairman", fields: [chairmanId], references: [id], onDelete: Cascade)
+  secretaryId     Int?
+  secretary       User?          @relation("CommissionSecretary", fields: [secretaryId], references: [id], onDelete: SetNull)
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  members         CommissionMember[]
+  meetings        CommissionMeeting[]
+  expertises      DocumentExpertise[]
+
+  @@index([chairmanId])
+  @@index([secretaryId])
+}
+
+// Члены экспертной комиссии
+model CommissionMember {
+  id              Int              @id @default(autoincrement())
+  commissionId    Int
+  commission      ExpertCommission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User             @relation("CommissionMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  role            String?
+  joinedAt        DateTime         @default(now())
+  leftAt          DateTime?
+
+  @@unique([commissionId, userId])
+  @@index([commissionId])
+  @@index([userId])
+}
+
+// Заседания экспертной комиссии
+model CommissionMeeting {
+  id              Int              @id @default(autoincrement())
+  commissionId    Int
+  commission      ExpertCommission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  date            DateTime
+  location        String?
+  agenda          String
+  decisions       String?
+  protocolNumber  String?
+  createdAt       DateTime         @default(now())
+
+  @@index([commissionId])
+  @@index([date])
+}
+
+// Экспертиза ценности документа
+model DocumentExpertise {
+  id              Int              @id @default(autoincrement())
+  documentId      Int
+  document        Document         @relation("DocumentExpertise", fields: [documentId], references: [id], onDelete: Cascade)
+  commissionId    Int
+  commission      ExpertCommission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  expertiseDate   DateTime         @default(now())
+  documentValue   DocumentValue
+  storageYears    Int?             // Срок хранения в годах
+  destroyDate     DateTime?        // Дата уничтожения
+  decision        String
+  decidedBy       Int
+  decidedByUser   User             @relation("ExpertiseDecider", fields: [decidedBy], references: [id], onDelete: Cascade)
+  notes           String?
+  createdAt       DateTime         @default(now())
+
+  @@index([documentId])
+  @@index([commissionId])
+  @@index([documentValue])
+}
+
+// Архивное хранилище
+model ArchiveStorage {
+  id              Int            @id @default(autoincrement())
+  documentId      Int            @unique
+  document        Document       @relation("DocumentArchive", fields: [documentId], references: [id], onDelete: Cascade)
+  archiveNumber   String         @unique
+  shelfLocation   String?        // Место на полке
+  boxNumber       String?        // Номер коробки
+  archiveStatus   ArchiveStatus  @default(IN_ARCHIVE)
+  archivedAt      DateTime       @default(now())
+  archivedBy      Int
+  archivedByUser  User           @relation("ArchiveCreator", fields: [archivedBy], references: [id], onDelete: Cascade)
+  retrievedAt     DateTime?
+  retrievedBy     Int?
+  retrievedByUser User?          @relation("ArchiveRetriever", fields: [retrievedBy], references: [id], onDelete: SetNull)
+  notes           String?
+
+  @@index([archiveNumber])
+  @@index([archiveStatus])
+  @@index([archivedAt])
+}
+
+// История движения документа в архиве
+model ArchiveMovement {
+  id              Int            @id @default(autoincrement())
+  documentId      Int
+  fromLocation    String?
+  toLocation      String
+  movedAt         DateTime       @default(now())
+  movedBy         Int
+  movedByUser     User           @relation("ArchiveMover", fields: [movedBy], references: [id], onDelete: Cascade)
+  reason          String?
+
+  @@index([documentId])
+  @@index([movedAt])
+}
+
+// Запрос на выдачу документа из архива
+model ArchiveRequest {
+  id              Int            @id @default(autoincrement())
+  documentId      Int
+  requestedBy     Int
+  requestedByUser User           @relation("ArchiveRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
+  requestDate     DateTime       @default(now())
+  reason          String
+  approvedBy      Int?
+  approvedByUser  User?          @relation("ArchiveApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
+  status          String         @default("PENDING") // PENDING, APPROVED, REJECTED, RETURNED
+  returnDate      DateTime?
+  notes           String?
+
+  @@index([documentId])
+  @@index([requestedBy])
+  @@index([status])
+}
+
+// ============================================
+// HISOBOT TIZIMI (Система отчетности)
+// ============================================
+
+// Общие отчеты (oylik, choraklik, yillik)
+model Report {
+  id              Int            @id @default(autoincrement())
+  title           String
+  reportType      ReportType
+  year            Int
+  quarter         Int?           // 1, 2, 3, 4 (null для годового)
+  month           Int?           // 1-12 (null для квартального/годового)
+  departmentId    Int?
+  department      Department?    @relation("DepartmentReports", fields: [departmentId], references: [id], onDelete: SetNull)
+  content         String         @db.Text
+  status          ReportStatus   @default(DRAFT)
+  createdBy       Int
+  createdByUser   User           @relation("ReportCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  submittedAt     DateTime?
+  approvedBy      Int?
+  approvedByUser  User?          @relation("ReportApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Metrics
+  metrics         ReportMetric[]
+
+  @@index([reportType])
+  @@index([year])
+  @@index([departmentId])
+  @@index([status])
+  @@index([createdBy])
+}
+
+// Метрики отчета
+model ReportMetric {
+  id              Int            @id @default(autoincrement())
+  reportId        Int
+  report          Report         @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  metricName      String
+  metricValue     Float
+  targetValue     Float?
+  unit            String?        // %, шт, сум и т.д.
+  description     String?
+
+  @@index([reportId])
+}
+
+// Отчет по исполнительской дисциплине
+model DisciplineReport {
+  id              Int            @id @default(autoincrement())
+  reportType      ReportType
+  year            Int
+  quarter         Int?
+  month           Int?
+  departmentId    Int?
+  department      Department?    @relation("DisciplineDeptReports", fields: [departmentId], references: [id], onDelete: SetNull)
+  
+  // Статистика
+  totalDocuments  Int            @default(0)
+  completedOnTime Int            @default(0)
+  completedLate   Int            @default(0)
+  inProgress      Int            @default(0)
+  overdue         Int            @default(0)
+  
+  // Нарушения
+  totalViolations Int            @default(0)
+  minorViolations Int            @default(0)
+  majorViolations Int            @default(0)
+  
+  // Дисциплинарные меры
+  warnings        Int            @default(0)
+  reprimands      Int            @default(0)
+  fines30         Int            @default(0)
+  fines50         Int            @default(0)
+  dismissals      Int            @default(0)
+  
+  createdBy       Int
+  createdByUser   User           @relation("DisciplineReportCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+
+  @@index([reportType])
+  @@index([year])
+  @@index([departmentId])
+}
+
+// Отчет по документообороту
+model DocumentFlowReport {
+  id              Int            @id @default(autoincrement())
+  reportType      ReportType
+  year            Int
+  quarter         Int?
+  month           Int?
+  
+  // Входящие
+  incomingTotal   Int            @default(0)
+  incomingByType  Json?          // По типам документов
+  
+  // Исходящие
+  outgoingTotal   Int            @default(0)
+  outgoingByType  Json?
+  
+  // По этапам
+  byStage         Json?          // Статистика по этапам
+  
+  // Средние сроки
+  avgProcessTime  Float?         // В днях
+  
+  createdBy       Int
+  createdByUser   User           @relation("DocFlowReportCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+
+  @@index([reportType])
+  @@index([year])
 }

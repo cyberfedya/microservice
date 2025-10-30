@@ -10,6 +10,11 @@ export async function findDepartments(): Promise<Department[]> {
   console.log("Fetching all departments..."); // Лог для отладки
   try {
     const departments = await prisma.department.findMany({
+      select: {
+        id: true,
+        name: true,
+        parentId: true
+      },
       orderBy: { id: 'asc' } // Сортируем по ID для предсказуемого порядка
     });
     console.log(`Found ${departments.length} departments.`);

@@ -1,239 +1,235 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.0.3",
   "info": {
     "title": "DocManageApp API",
-    "description": "API for managing documents, users, roles, and discipline within the Agrobank Executive Discipline System. This is a mock API.",
-    "version": "1.0.0"
+    "version": "1.2.0",
+    "description": "💼 **Agrobank Executive Discipline System API** — единая платформа для управления документами, переписками, пользователями и ролями внутри организации.",
+    "contact": {
+      "name": "Agrobank IT Department",
+      "email": "support@agrobank.uz",
+      "url": "https://agrobank.uz"
+    },
+    "license": {
+      "name": "MIT License",
+      "url": "https://opensource.org/licenses/MIT"
+    }
   },
   "servers": [
-    {
-      "url": "/",
-      "description": "Mock API Server"
-    }
+    { "url": "https://api.agrobank.uz/v1", "description": "Production Server" },
+    { "url": "https://staging.agrobank.uz/v1", "description": "Staging Server" }
+  ],
+  "tags": [
+    { "name": "User Management", "description": "👤 Управление пользователями и отделами банка" },
+    { "name": "Role Management", "description": "🧩 Управление ролями и правами доступа" },
+    { "name": "Correspondence", "description": "📄 Входящая и исходящая корреспонденция между отделами" }
   ],
   "paths": {
     "/users": {
       "get": {
-        "summary": "Get all users",
+        "summary": "Получить список пользователей",
+        "operationId": "getUsers",
         "tags": ["User Management"],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Количество элементов на странице" },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Смещение для пагинации" }
+        ],
         "responses": {
           "200": {
-            "description": "A list of users.",
+            "description": "Список пользователей",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/User"
+                  "items": { "$ref": "#/components/schemas/User" }
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Пример данных пользователей",
+                    "value": [
+                      { "id": 1, "name": "Ali Akbarov", "email": "ali@agrobank.uz", "role": "Manager", "department": "HR" },
+                      { "id": 2, "name": "Dilnoza Karimova", "email": "dilnoza@agrobank.uz", "role": "Employee", "department": "Finance" }
+                    ]
                   }
                 }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Создать нового пользователя",
+        "operationId": "createUser",
+        "tags": ["User Management"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserInput" } } }
+        },
+        "responses": {
+          "201": { "$ref": "#/components/responses/UserResponse" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+
+    "/roles": {
+      "get": {
+        "summary": "Получить список ролей",
+        "operationId": "getRoles",
+        "tags": ["Role Management"],
+        "responses": {
+          "200": {
+            "description": "Список ролей в системе",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Role" } }
               }
             }
           }
         }
       },
       "post": {
-        "summary": "Add a new user",
-        "tags": ["User Management"],
+        "summary": "Добавить новую роль",
+        "operationId": "createRole",
+        "tags": ["Role Management"],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserInput"
-              }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RoleInput" } } }
         },
         "responses": {
-          "200": {
-            "description": "The created user.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
-          }
+          "201": { "$ref": "#/components/responses/RoleResponse" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
-    "/users/{userId}": {
-      "put": {
-        "summary": "Update an existing user",
-        "tags": ["User Management"],
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "$ref": "#/components/responses/UserResponse" },
-          "404": { "description": "User not found" }
-        }
-      },
-      "delete": {
-        "summary": "Delete a user",
-        "tags": ["User Management"],
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User deleted successfully"
-          },
-          "404": {
-            "description": "User not found"
-          }
-        }
-      }
-    },
-    "/roles": {
-        "get": {
-            "summary": "Get all roles",
-            "tags": ["Role Management"],
-            "responses": {
-                "200": {
-                    "description": "A list of roles.",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "array",
-                                "items": { "$ref": "#/components/schemas/Role" }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "post": {
-            "summary": "Add a new role",
-            "tags": ["Role Management"],
-            "requestBody": {
-                "required": true,
-                "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RoleInput" } } }
-            },
-            "responses": {
-                "200": { "$ref": "#/components/responses/RoleResponse" }
-            }
-        }
-    },
+
     "/correspondences": {
       "get": {
-        "summary": "Get correspondences for the current user",
+        "summary": "Получить корреспонденции текущего пользователя",
+        "description": "Результат зависит от роли авторизованного пользователя. Менеджеры видят входящие, сотрудники — назначенные им документы.",
+        "operationId": "getCorrespondences",
         "tags": ["Correspondence"],
-        "description": "The list of correspondences returned depends on the role of the logged-in user.",
         "responses": {
           "200": {
-            "description": "A list of correspondences.",
+            "description": "Список корреспонденций",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Correspondence"
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Correspondence" } },
+                "examples": {
+                  "incoming": {
+                    "summary": "Пример входящей корреспонденции",
+                    "value": [
+                      {
+                        "id": 1,
+                        "type": "Kiruvchi",
+                        "title": "Tahlil hisobotlari",
+                        "content": "Departamentdan kelgan hujjatlar.",
+                        "source": "HR Department",
+                        "stage": "Yangi",
+                        "deadline": "2025-11-10T00:00:00Z",
+                        "department": "Bosh ofis",
+                        "mainExecutorId": 2
+                      }
+                    ]
                   }
                 }
               }
             }
-          }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
     }
   },
+
   "components": {
     "schemas": {
       "User": {
         "type": "object",
+        "required": ["id", "name", "email"],
         "properties": {
-          "id": { "type": "integer" },
-          "name": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
-          "role": { "type": "string" },
-          "department": { "type": "string" },
-          "managerId": { "type": "integer" }
+          "id": { "type": "integer", "example": 1 },
+          "name": { "type": "string", "example": "Ali Akbarov" },
+          "email": { "type": "string", "format": "email", "example": "ali@agrobank.uz" },
+          "role": { "type": "string", "example": "Manager" },
+          "department": { "type": "string", "example": "Finance" },
+          "managerId": { "type": "integer", "example": 5 }
         }
       },
       "UserInput": {
         "type": "object",
+        "required": ["name", "email"],
         "properties": {
-          "name": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
-          "role": { "type": "string" },
-          "department": { "type": "string" }
+          "name": { "type": "string", "example": "Dilnoza Karimova" },
+          "email": { "type": "string", "example": "dilnoza@agrobank.uz" },
+          "role": { "type": "string", "example": "Employee" },
+          "department": { "type": "string", "example": "Finance" }
         }
       },
       "Role": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "description": { "type": "string" }
+          "id": { "type": "string", "example": "admin" },
+          "name": { "type": "string", "example": "Administrator" },
+          "description": { "type": "string", "example": "Full access to system settings" }
         }
       },
       "RoleInput": {
         "type": "object",
+        "required": ["name"],
         "properties": {
-            "name": { "type": "string" },
-            "description": { "type": "string" }
+          "name": { "type": "string", "example": "Manager" },
+          "description": { "type": "string", "example": "Can manage documents and users" }
         }
       },
       "Correspondence": {
         "type": "object",
         "properties": {
-            "id": { "type": "integer" },
-            "type": { "type": "string", "enum": ["Kiruvchi", "Chiquvchi"] },
-            "title": { "type": "string" },
-            "content": { "type": "string" },
-            "source": { "type": "string" },
-            "stage": { "type": "string" },
-            "deadline": { "type": "string", "format": "date-time" },
-            "department": { "type": "string" },
-            "mainExecutorId": { "type": "integer" }
+          "id": { "type": "integer", "example": 1 },
+          "type": { "type": "string", "enum": ["Kiruvchi", "Chiquvchi"], "example": "Kiruvchi" },
+          "title": { "type": "string", "example": "Hisobot" },
+          "content": { "type": "string", "example": "2025-yil 1-chorak faoliyati bo‘yicha hisobot" },
+          "source": { "type": "string", "example": "Markaziy bo‘lim" },
+          "stage": { "type": "string", "example": "Yangi" },
+          "deadline": { "type": "string", "format": "date-time", "example": "2025-11-10T00:00:00Z" },
+          "department": { "type": "string", "example": "Bosh ofis" },
+          "mainExecutorId": { "type": "integer", "example": 2 }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "example": 400 },
+          "message": { "type": "string", "example": "Invalid input data" },
+          "details": { "type": "string", "example": "Email format is invalid" }
         }
       }
     },
     "responses": {
-        "UserResponse": {
-            "description": "A single user object.",
-            "content": {
-                "application/json": { "schema": { "$ref": "#/components/schemas/User" } }
-            }
-        },
-        "RoleResponse": {
-            "description": "A single role object.",
-            "content": {
-                "application/json": { "schema": { "$ref": "#/components/schemas/Role" } }
-            }
-        }
+      "UserResponse": {
+        "description": "Информация о пользователе",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+      },
+      "RoleResponse": {
+        "description": "Информация о роли",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Role" } } }
+      },
+      "BadRequest": {
+        "description": "Некорректные входные данные",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Unauthorized": {
+        "description": "Неавторизованный доступ",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
     }
   },
-  "tags": [
-      { "name": "User Management", "description": "Operations about users" },
-      { "name": "Role Management", "description": "Operations about roles" },
-      { "name": "Correspondence", "description": "Operations about documents" }
-  ]
+  "security": [{ "bearerAuth": [] }]
 }
